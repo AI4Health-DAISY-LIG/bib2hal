@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bib2hal"
+version = "0.1.0"
+description = "Bring a BibTeX publication list into HAL, with a human review step."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Sandrine Muller" }]
+dependencies = []
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering",
+]
+
+[project.scripts]
+bib2hal = "bib2hal.cli:main"
+
+[tool.setuptools]
+packages = ["bib2hal"]
+
+[tool.setuptools.package-data]
+bib2hal = ["static/*"]

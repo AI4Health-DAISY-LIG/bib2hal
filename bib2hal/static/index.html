@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bib2hal</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --ink:#1d2330; --muted:#5d6675; --line:#dfe3ea; --accent:#2f5bd3; --accent-ink:#fff;
+  --ok:#1f8a4c; --warn:#b26a00; --bad:#c23b3b; --soft:#eef2fb; --chip:#eef0f4; --mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#14171d; --panel:#1c2028; --ink:#e7eaf0; --muted:#9aa3b2; --line:#2e3440; --accent:#7d9bff; --accent-ink:#0f1320;
+  --ok:#4cc38a; --warn:#e2a84b; --bad:#ff7b7b; --soft:#232a3a; --chip:#2a303b;
+}}
+*{box-sizing:border-box}
+a{color:var(--accent)}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+header .wd{color:var(--muted);font-size:12px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+nav{display:flex;gap:4px}
+nav button{border:0;background:none;color:var(--muted);padding:7px 12px;border-radius:var(--r);cursor:pointer;font:inherit;font-weight:550}
+nav button.on{background:var(--soft);color:var(--accent)}
+nav button .n{display:inline-block;min-width:18px;height:18px;line-height:18px;border-radius:9px;background:var(--chip);color:var(--muted);font-size:11px;text-align:center;margin-right:6px}
+nav button.on .n{background:var(--accent);color:var(--accent-ink)}
+main{max-width:1280px;margin:0 auto;padding:20px}
+section.tab{display:none}section.tab.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card h2{font-size:15px;margin:0 0 4px}.card p.sub{margin:0 0 14px;color:var(--muted)}
+label{display:block;font-weight:550;margin:10px 0 4px}
+label small{font-weight:400;color:var(--muted)}
+input[type=text],input[type=password],input[type=number],select,textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{min-height:64px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.bad-field{border-color:var(--bad)!important;background:color-mix(in srgb,var(--bad) 8%,var(--bg))!important}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0 14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button.b{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 13px;border-radius:6px;cursor:pointer;font:inherit;font-weight:550}
+button.b:hover{border-color:var(--accent)}
+button.p{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border-radius:14px;padding:3px 10px;margin:3px 4px 3px 0;font-size:13px}
+.chip code{font-family:var(--mono);font-size:12px}
+.chip button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0}
+.chip.sel{background:var(--accent);color:var(--accent-ink)}.chip.sel button{color:var(--accent-ink)}
+.chip.click{cursor:pointer}
+.results{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:6px}
+.results div{display:flex;gap:10px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);cursor:pointer}
+.results div:hover{background:var(--soft)}.results div:last-child{border-bottom:0}
+.results code{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:90px}
+.badge{display:inline-block;font-size:11px;font-weight:650;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.a-deposit{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
+.a-attach{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.a-check{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.a-skip,.a-duplicate{background:var(--chip);color:var(--muted)}
+.muted{color:var(--muted)}.mono{font-family:var(--mono);font-size:12px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.progress{height:8px;background:var(--chip);border-radius:4px;overflow:hidden;margin:10px 0}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+pre.log{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;max-height:300px;overflow:auto;font:12px/1.5 var(--mono);white-space:pre-wrap;margin:0}
+.review{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:16px;align-items:start}
+.list{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;position:sticky;top:70px}
+.list .filters{padding:10px;border-bottom:1px solid var(--line)}
+.list .items{max-height:calc(100vh - 230px);overflow:auto}
+.item{padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;gap:4px 8px;align-items:center}
+.item input.pk{margin:0;width:16px;height:16px;cursor:pointer}
+.item.picked{background:color-mix(in srgb,var(--accent) 9%,var(--panel))}
+.item .why{grid-column:2/5;font-size:12px;color:var(--warn)}
+#blocked .item{grid-template-columns:auto 1fr auto}#blocked .item .t{grid-column:1/4}
+.bulk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;margin-top:8px;border-radius:8px;background:var(--soft);font-size:13px}
+.bulk select{width:auto;flex:1 1 130px;min-width:0;max-width:100%;padding:4px 6px}
+.bulk button.b{padding:4px 10px}
+.chk-field{border-color:var(--warn)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--warn) 30%,transparent)}
+.checkbox-box{background:color-mix(in srgb,var(--warn) 10%,var(--panel));border:1px solid color-mix(in srgb,var(--warn) 45%,var(--line));border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px}
+.checkbox-box ul{margin:4px 0 0;padding-left:18px}
+.authors.chk{outline:2px solid color-mix(in srgb,var(--warn) 55%,transparent);outline-offset:4px;border-radius:6px}
+.item:hover{background:var(--soft)}.item.on{background:var(--soft);box-shadow:inset 3px 0 0 var(--accent)}
+.item .t{grid-column:2/5;font-size:13px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.item .m{font-size:12px;color:var(--muted)}
+.fchip{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:14px;padding:3px 10px;margin:2px;cursor:pointer;font:inherit;font-size:12px}
+.fchip.on{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.problems{background:color-mix(in srgb,var(--bad) 9%,var(--panel));border:1px solid color-mix(in srgb,var(--bad) 35%,var(--line));border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px}
+.good{background:color-mix(in srgb,var(--ok) 10%,var(--panel));border:1px solid color-mix(in srgb,var(--ok) 35%,var(--line));border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px}
+.authors ol{margin:4px 0 0;padding-left:22px;columns:2;font-size:13px}
+.authors li.me{font-weight:700;color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+.modal.on{display:flex}
+.modal .box{background:var(--panel);border-radius:12px;max-width:900px;width:100%;max-height:90vh;display:flex;flex-direction:column;padding:16px}
+.modal pre{flex:1;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:12px;font:12px/1.5 var(--mono);margin:10px 0 0}
+#toast{position:fixed;bottom:20px;right:20px;background:var(--ink);color:var(--panel);padding:9px 14px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30}
+#toast.on{opacity:1}
+.accounts{max-width:460px}
+.acct{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--bg)}
+.acct h3{margin:0 0 2px;font-size:14px;display:flex;align-items:center;gap:8px}
+.acct .who{display:flex;align-items:center;gap:12px;margin:10px 0}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex:none}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}.dot.on{background:var(--ok)}
+.acct .err{color:var(--bad);font-size:13px;margin-top:6px;min-height:1em}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+@media (max-width:860px){.review{grid-template-columns:1fr}.list{position:static}header{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<header>
+  <h1>bib2hal</h1>
+  <span class="wd" id="wd"></span>
+  <nav id="nav">
+    <button data-tab="settings"><span class="n">1</span>Settings</button>
+    <button data-tab="import"><span class="n">2</span>Import</button>
+    <button data-tab="review"><span class="n">3</span>Review</button>
+    <button data-tab="deposit"><span class="n">4</span>Submit</button>
+  </nav>
+</header>
+
+<main>
+<!-- ============================================================== SETTINGS -->
+<section class="tab" id="tab-settings">
+  <div class="card">
+    <h2>Who you are</h2>
+    <p class="sub">Used to recognise you among the authors and to spot HAL records not yet linked to your IdHAL.</p>
+    <div class="grid">
+      <div><label>Your name <small>Family, Given</small></label><input type="text" data-cfg="BIB2HAL_ME" placeholder="Muller, Sandrine"></div>
+      <div><label>IdHAL <small>e.g. sandrine-muller</small></label><input type="text" data-cfg="BIB2HAL_IDHAL"></div>
+      <div><label>Contact e-mail <small>optional, sent to Crossref</small></label><input type="text" data-cfg="BIB2HAL_MAILTO"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Your current affiliation</h2>
+    <p class="sub">HAL structure ids of your current lab. They are pre-filled only for works published from the year below on;
+      older works (PhD, previous positions) are left for you to fill in.</p>
+    <div class="grid">
+      <div><label>Structure ids <small>; separated</small></label><input type="text" data-cfg="BIB2HAL_STRUCTS" id="structs"></div>
+      <div><label>Since year <small>when you joined</small></label><input type="text" data-cfg="BIB2HAL_STRUCTS_SINCE" placeholder="2023"></div>
+    </div>
+    <label>Find a structure</label>
+    <div class="row"><input type="text" id="structQ" placeholder="Laboratoire d'informatique de Grenoble" style="flex:1"><button class="b" id="structGo">Search</button></div>
+    <div class="results" id="structRes" hidden></div>
+  </div>
+
+  <div class="card">
+    <h2>Your disciplines</h2>
+    <p class="sub">Pick the HAL disciplines you publish in. For each paper the closest one is suggested, and you confirm it in Review.</p>
+    <div id="shortlist"></div>
+    <input type="hidden" data-cfg="BIB2HAL_DOMAINS" id="domainsCfg">
+    <label>Search all HAL disciplines <small>French or English, code or label</small></label>
+    <div class="row"><input type="text" id="domQ" placeholder="neuro, intelligence artificielle, bioinformatics…" style="flex:1"><button class="b" id="domGo">Search</button></div>
+    <div class="results" id="domRes" hidden></div>
+  </div>
+
+  <div class="card">
+    <h2>HAL account</h2>
+    <p class="sub">Your hal.science account, used to submit your publications. Your login is checked directly with HAL;
+      the password is sent only to HAL and is never written to a file.</p>
+    <div id="envWarn"></div>
+    <div class="accounts" id="accounts"></div>
+  </div>
+  <div class="row"><button class="b p" id="saveCfg">Save settings</button><span class="muted" id="cfgMsg"></span></div>
+</section>
+
+<!-- ============================================================== IMPORT -->
+<section class="tab" id="tab-import">
+  <div class="card">
+    <h2>Import your publication list</h2>
+    <p class="sub">A BibTeX file: Google Scholar (select all → Export → BibTeX), Zotero, ORCID, publishers…
+      Each reference is completed from Crossref and looked up in HAL. Nothing is deposited at this step.</p>
+    <div id="prevWarn" class="problems" hidden></div>
+    <label>BibTeX file</label>
+    <input type="file" id="bibFile" accept=".bib,.bibtex,.txt">
+    <div class="row" style="margin-top:10px">
+      <label style="margin:0;font-weight:400"><input type="checkbox" id="noCrossref"> skip Crossref</label>
+      <label style="margin:0;font-weight:400"><input type="checkbox" id="noHal"> skip the HAL check</label>
+      <label style="margin:0;font-weight:400">only the first <input type="number" id="limit" min="0" value="0" style="width:70px;display:inline-block"> (0 = all)</label>
+    </div>
+    <div class="row" style="margin-top:14px"><button class="b p" id="importGo">Analyse</button></div>
+  </div>
+  <div class="card" id="jobCard" hidden>
+    <h2 id="jobTitle">Working…</h2>
+    <div class="progress"><i id="jobBar"></i></div>
+    <p class="muted" id="jobCount"></p>
+    <pre class="log" id="jobLog"></pre>
+    <div id="jobDone" style="margin-top:12px"></div>
+  </div>
+</section>
+
+<!-- ============================================================== REVIEW -->
+<section class="tab" id="tab-review">
+  <div id="reviewEmpty" class="card empty" hidden>No review yet — import a BibTeX file first.</div>
+  <div class="review" id="reviewWrap">
+    <div class="list">
+      <div class="filters">
+        <div id="fchips"></div>
+        <input type="text" id="find" placeholder="Search title, author, venue…" style="margin-top:6px">
+        <label style="font-weight:400;margin:8px 0 0;font-size:13px"><input type="checkbox" id="pickAll"> select all shown <span class="muted">(shift-click for a range)</span></label>
+        <div class="bulk" id="bulk" hidden>
+          <b id="bulkN"></b>
+          <select id="bulkAction"><option value="">set action…</option></select>
+          <select id="bulkType"><option value="">set type…</option></select>
+          <select id="bulkDom"><option value="">add discipline…</option></select>
+          <button class="b" id="bulkVal">mark validated</button>
+          <button class="b p" id="bulkApply">Apply</button>
+          <button class="b" id="bulkClear">clear</button>
+        </div>
+      </div>
+      <div class="items" id="items"></div>
+    </div>
+    <div id="editor"></div>
+  </div>
+</section>
+
+<!-- ============================================================== DEPOSIT -->
+<section class="tab" id="tab-deposit">
+  <div class="card">
+    <h2>Submit to HAL</h2>
+    <p class="sub">Only references marked <b>deposit</b> with nothing missing are listed. Use <b>Check with HAL</b> first:
+      HAL validates each record completely and creates nothing. A reference already submitted is never sent twice.
+      After submission, HAL moderators review each record before it goes public.</p>
+    <div id="loginState"></div>
+    <div id="readyList"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="b" id="testGo" title="HAL validates each record completely but creates nothing">Check with HAL</button>
+      <button class="b p" id="depositGo">Submit to HAL…</button>
+      <span class="muted">at most <input type="number" id="depLimit" min="0" value="0" style="width:70px;display:inline-block"> at a time (0 = all selected)</span>
+    </div>
+  </div>
+  <div class="card" id="blockedCard" hidden><h2>Not ready yet</h2><p class="sub">Marked deposit but incomplete — click to fix.</p><div id="blocked"></div></div>
+  <div class="card" id="depJob" hidden><h2 id="depTitle">Depositing…</h2><div class="progress"><i id="depBar"></i></div><pre class="log" id="depLog"></pre></div>
+  <div class="card"><h2>History</h2><div id="history" class="muted">No deposit yet.</div></div>
+</section>
+</main>
+
+<div class="modal" id="modal"><div class="box"><div class="row" style="justify-content:space-between"><b id="modalTitle">TEI preview</b><button class="b" id="modalClose">Close</button></div><pre id="modalBody"></pre></div></div>
+<div class="modal" id="confirmModal"><div class="box" style="max-width:520px">
+  <b style="font-size:16px">Submit to HAL?</b>
+  <p id="confirmText" style="margin:12px 0"></p>
+  <p class="muted" style="margin:0 0 14px">HAL moderators review each record before it becomes public. You can follow them in your HAL account (Mon espace → Mes dépôts).</p>
+  <div class="row" style="justify-content:flex-end"><button class="b" id="confirmNo">Cancel</button><button class="b p" id="confirmYes">Submit</button></div>
+</div></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const TOKEN = "__TOKEN__";
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function api(path, opts={}) {
+  const r = await fetch(path, {...opts, headers: {"X-Bib2hal-Token": TOKEN, ...(opts.json ? {"Content-Type":"application/json"} : {}), ...(opts.headers||{})},
+    body: opts.json ? JSON.stringify(opts.json) : opts.body});
+  const d = await r.json().catch(() => ({error: r.statusText}));
+  if (!r.ok) throw new Error(d.error || r.statusText);
+  return d;
+}
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2200); }
+
+let S = {state: null, rows: [], labels: {}, shortlist: [], sel: null, filter: "todo", find: "", picked: new Set(), lastPick: null};
+
+// ------------------------------------------------------------------ tabs
+function show(tab) {
+  S.tab = tab;
+  $$("#nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  $$("section.tab").forEach(s => s.classList.toggle("on", s.id === "tab-" + tab));
+  if (tab === "review") loadRows();
+  if (tab === "deposit") loadDeposit();
+  if (tab === "import") renderPrev();
+  try { localStorage.setItem("bib2hal.tab", tab); } catch (e) {}
+}
+$$("#nav button").forEach(b => b.onclick = () => show(b.dataset.tab));
+
+// ------------------------------------------------------------------ settings
+async function loadState() {
+  S.state = await api("/api/state");
+  $("#wd").textContent = S.state.workdir;
+  $$("[data-cfg]").forEach(i => { if (i.type !== "password") i.value = S.state.config[i.dataset.cfg] || ""; });
+  renderAccounts(S.state.auth);
+  S.shortlist = (S.state.config.BIB2HAL_DOMAINS || "").split(/[;,\s]+/).filter(Boolean);
+  await refreshLabels(S.shortlist);
+  renderShortlist();
+  return S.state;
+}
+async function refreshLabels(codes) {
+  const need = codes.filter(c => !(c in S.labels));
+  if (!need.length) return;
+  try { Object.assign(S.labels, (await api("/api/domains?codes=" + encodeURIComponent(need.join(";")))).labels); } catch (e) {}
+}
+function renderShortlist() {
+  $("#domainsCfg").value = S.shortlist.join(";");
+  $("#shortlist").innerHTML = S.shortlist.length ? S.shortlist.map((c, i) =>
+    `<span class="chip"><code>${esc(c)}</code>${esc(S.labels[c] || "")}<button title="remove" data-rm="${i}">×</button></span>`).join("")
+    : `<span class="muted">No discipline chosen yet.</span>`;
+  $$("#shortlist [data-rm]").forEach(b => b.onclick = () => { S.shortlist.splice(+b.dataset.rm, 1); renderShortlist(); });
+}
+async function searchDomains(q, box, onPick) {
+  box.hidden = false; box.innerHTML = `<div class="muted">Searching…</div>`;
+  try {
+    const d = await api("/api/domains?q=" + encodeURIComponent(q));
+    box.innerHTML = d.results.length ? d.results.map((x, i) => `<div data-i="${i}"><code>${esc(x.code)}</code><span>${esc(x.label_en || x.label_fr)}<br><span class="muted">${esc(x.label_fr)}</span></span></div>`).join("")
+      : `<div class="muted">Nothing found among ${d.total} disciplines.</div>`;
+    $$("[data-i]", box).forEach(el => el.onclick = () => { const x = d.results[+el.dataset.i]; S.labels[x.code] = x.label_en || x.label_fr; onPick(x.code); });
+  } catch (e) { box.innerHTML = `<div class="bad">${esc(e.message)}</div>`; }
+}
+$("#domGo").onclick = () => searchDomains($("#domQ").value, $("#domRes"), code => { if (!S.shortlist.includes(code)) S.shortlist.push(code); renderShortlist(); toast("Added " + code); });
+$("#domQ").onkeydown = e => { if (e.key === "Enter") $("#domGo").click(); };
+$("#structGo").onclick = async () => {
+  const box = $("#structRes"); box.hidden = false; box.innerHTML = `<div class="muted">Searching…</div>`;
+  try {
+    const d = await api("/api/structs?q=" + encodeURIComponent($("#structQ").value));
+    box.innerHTML = d.results.length ? d.results.map((x, i) => `<div data-i="${i}"><code>${esc(x.docid)}</code><span>${esc(x.acronym_s || "")} — ${esc(x.name_s || "")}<br><span class="muted">${esc(x.type_s || "")} · ${esc(x.country_s || "")}</span></span><span class="badge ${x.valid_s === "VALID" ? "a-deposit" : "a-skip"}">${esc(x.valid_s || "")}</span></div>`).join("")
+      : `<div class="muted">No structure found.</div>`;
+    $$("[data-i]", box).forEach(el => el.onclick = () => {
+      const id = String(d.results[+el.dataset.i].docid), cur = $("#structs").value.split(/[;,\s]+/).filter(Boolean);
+      if (!cur.includes(id)) cur.push(id); $("#structs").value = cur.join(";"); toast("Added structure " + id);
+    });
+  } catch (e) { box.innerHTML = `<div class="bad">${esc(e.message)}</div>`; }
+};
+$("#structQ").onkeydown = e => { if (e.key === "Enter") $("#structGo").click(); };
+$("#saveCfg").onclick = async () => {
+  const values = {}; $$("[data-cfg]").forEach(i => values[i.dataset.cfg] = i.value);
+  try {
+    await api("/api/config", {method: "POST", json: {values}});
+    await loadState(); $("#cfgMsg").textContent = "Saved in .env"; toast("Settings saved");
+  } catch (e) { $("#cfgMsg").innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+};
+
+// ------------------------------------------------------------------ HAL sign-in
+const SOURCE = {keychain: "remembered on this computer", session: "signed in until bib2hal stops"};
+function renderAccounts(auth) {
+  S.auth = auth;
+  $("#envWarn").innerHTML = auth.env_password ? `<div class="problems">An older version left your HAL password in plain text in <span class="mono">.env</span>.
+    bib2hal no longer reads it. <button class="b" id="dropEnv">Delete it from .env</button></div>` : "";
+  const de = $("#dropEnv"); if (de) de.onclick = async () => { renderAccounts((await api("/api/auth/forget-env", {method: "POST", json: {}})).auth); toast("Deleted from .env"); };
+  $("#accounts").innerHTML = auth.signed_in
+    ? `<div class="acct"><h3><span class="dot on"></span>Signed in to HAL</h3>
+        <div class="who"><div class="avatar">${esc((auth.login[0] || "?").toUpperCase())}</div><div><b>${esc(auth.login)}</b><br><span class="muted" style="font-size:12px">${esc(SOURCE[auth.source] || "")}</span></div></div>
+        <button class="b" id="signOut">Sign out</button></div>`
+    : `<form class="acct" id="signIn" autocomplete="on"><h3><span class="dot"></span>Sign in to HAL</h3>
+        <label>HAL login</label><input type="text" name="login" autocomplete="username" required>
+        <label>Password</label><input type="password" name="password" autocomplete="current-password" required>
+        <label style="font-weight:400;font-size:13px"><input type="checkbox" name="remember" ${auth.keychain ? "checked" : "disabled"}>
+          ${auth.keychain ? `Remember me on this computer <span class="muted">(${esc(auth.keychain)})</span>` : `<span class="muted">You will stay signed in until bib2hal stops.</span>`}</label>
+        <div class="row" style="margin-top:10px"><button class="b p" type="submit">Sign in</button>
+          <a href="https://hal.science" target="_blank" rel="noopener" class="muted" style="font-size:13px">No account / forgot password? hal.science ↗</a></div>
+        <div class="err"></div></form>`;
+  const so = $("#signOut"); if (so) so.onclick = async () => { renderAccounts((await api("/api/auth/logout", {method: "POST", json: {}})).auth); toast("Signed out"); if (S.tab === "deposit") loadDeposit(); };
+  const f = $("#signIn");
+  if (f) f.onsubmit = async e => {
+    e.preventDefault(); const btn = $("button[type=submit]", f), err = $(".err", f);
+    btn.disabled = true; btn.textContent = "Checking with HAL…"; err.textContent = "";
+    try {
+      const d = await api("/api/auth/login", {method: "POST", json: {login: f.login.value, password: f.password.value, remember: f.remember.checked}});
+      renderAccounts(d.auth); toast("Signed in to HAL");
+      if (S.tab === "deposit") loadDeposit();
+    } catch (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Sign in"; }
+  };
+}
+
+// ------------------------------------------------------------------ jobs
+async function pollJob(onDone, ui) {
+  const j = await api("/api/job");
+  ui.card.hidden = false;
+  ui.bar.style.width = j.n ? (100 * j.i / j.n) + "%" : (j.running ? "5%" : "100%");
+  if (ui.count) ui.count.textContent = j.n ? `${j.i} / ${j.n}` : "";
+  ui.log.textContent = j.lines.join("\n"); ui.log.scrollTop = ui.log.scrollHeight;
+  if (j.running) return setTimeout(() => pollJob(onDone, ui), 600);
+  ui.title.textContent = j.error ? "Stopped with an error" : "Done";
+  if (j.error) ui.log.textContent += "\n\nERROR: " + j.error;
+  onDone(j);
+}
+
+// ------------------------------------------------------------------ import
+function renderPrev() {
+  const st = S.state; const w = $("#prevWarn");
+  w.hidden = !st || !st.n_rows;
+  if (st && st.n_rows) w.innerHTML = `A review already exists (<b>${st.n_rows}</b> references in <span class="mono">${esc(st.review_file)}</span>). Importing again replaces it; the current one is kept as a dated backup. <a href="#" id="toRev">Continue the current review instead</a>`;
+  const a = $("#toRev"); if (a) a.onclick = e => { e.preventDefault(); show("review"); };
+}
+$("#importGo").onclick = async () => {
+  const f = $("#bibFile").files[0];
+  if (!f) return toast("Choose a .bib file first");
+  const qs = new URLSearchParams({name: f.name, limit: $("#limit").value || 0, no_crossref: $("#noCrossref").checked ? 1 : 0, no_hal: $("#noHal").checked ? 1 : 0});
+  try {
+    $("#importGo").disabled = true; $("#jobDone").innerHTML = ""; $("#jobTitle").textContent = "Analysing…";
+    await api("/api/import?" + qs, {method: "POST", body: await f.arrayBuffer(), headers: {"Content-Type": "application/octet-stream"}});
+    pollJob(async j => {
+      $("#importGo").disabled = false; await loadState();
+      if (!j.error) {
+        const c = S.state.counts;
+        $("#jobDone").innerHTML = Object.entries(c).map(([k, v]) => `<span class="chip"><span class="badge a-${esc(k)}">${esc(k)}</span> ${v}</span>`).join("") +
+          `<div class="row" style="margin-top:10px"><button class="b p" id="goRev">Review the results →</button></div>`;
+        $("#goRev").onclick = () => show("review");
+      }
+    }, {card: $("#jobCard"), bar: $("#jobBar"), log: $("#jobLog"), title: $("#jobTitle"), count: $("#jobCount")});
+  } catch (e) { $("#importGo").disabled = false; toast(e.message); }
+};
+
+// ------------------------------------------------------------------ review
+const FIELDS = {
+  base: [["venue","Journal / venue"],["doi","DOI"],["year","Year"],["volume","Volume"],["issue","Issue"],["pages","Pages"],["publisher","Publisher"],["issn","ISSN"],["isbn","ISBN"]],
+  conf: [["conf_name","Conference name"],["conf_city","Conference city"],["conf_country","Country code (FR, US…)"],["conf_date","Start date (YYYY-MM-DD)"]],
+  inst: [["institution","Institution / university"]],
+  me:   [["me_position","Your position in the author list"],["my_structs","Your HAL structure ids (at the time)"]],
+  more: [["language","Language (en, fr…)"],["pdf","PDF path (optional, full text you may deposit)"],["licence","Licence (CC BY 4.0…)"]],
+};
+const SELECTS = {audience: ["international","national","unspecified"], peer_reviewed: ["yes","no"], proceedings: ["yes","no"], invited: ["no","yes"]};
+
+async function loadRows() {
+  const d = await api("/api/rows");
+  S.rows = d.rows; S.shortlist = d.shortlist; Object.assign(S.labels, d.labels);
+  $("#reviewEmpty").hidden = !!S.rows.length; $("#reviewWrap").hidden = !S.rows.length;
+  renderFilters(); renderList();
+  if (S.sel === null || !S.rows[S.sel]) { const first = visible()[0]; S.sel = first ? first.id : null; }
+  renderEditor();
+}
+function isTodo(r) { return (r.action === "deposit" || r.action === "check") && r.validated !== "yes"; }
+function visible() {
+  const f = S.filter, q = S.find.toLowerCase();
+  return S.rows.filter(r => (f === "all" || (f === "todo" ? isTodo(r) : f === "problems" ? r.problems.length : r.action === f))
+    && (!q || (r.title + " " + r.authors + " " + r.venue + " " + r.year).toLowerCase().includes(q)));
+}
+function renderFilters() {
+  const c = a => S.rows.filter(r => r.action === a).length;
+  const opts = [["todo","To validate", S.rows.filter(isTodo).length], ["problems","Incomplete", S.rows.filter(r => r.problems.length).length], ["all","All", S.rows.length],
+    ...["deposit","check","attach","skip","duplicate"].map(a => [a, a, c(a)])];
+  $("#fchips").innerHTML = opts.map(([k, l, n]) => `<button class="fchip ${S.filter === k ? "on" : ""}" data-f="${k}">${esc(l)} ${n}</button>`).join("");
+  $$("#fchips [data-f]").forEach(b => b.onclick = () => { S.filter = b.dataset.f; renderFilters(); renderList(); });
+}
+$("#find").oninput = e => { S.find = e.target.value; renderList(); };
+function renderList() {
+  const v = visible();
+  $("#items").innerHTML = v.length ? v.map(r => `<div class="item ${r.id === S.sel ? "on" : ""} ${S.picked.has(r.id) ? "picked" : ""}" data-id="${r.id}">
+      <input type="checkbox" class="pk" data-pk="${r.id}" ${S.picked.has(r.id) ? "checked" : ""} title="select">
+      <span class="badge a-${esc(r.action)}">${esc(r.action)}</span>
+      <span class="m">${esc(r.hal_type || "?")} · ${esc(r.year || "----")}</span>
+      <span class="m">${r.validated === "yes" ? '<span class="ok">✓</span>' : ""}${r.problems.length ? ` <span class="bad">${r.problems.length} to fix</span>` : ""}</span>
+      <span class="t">${esc(r.title)}</span>
+      ${r.action === "check" && r.reasons.length ? `<span class="why">⚠ ${esc(r.reasons.map(x => REASON_SHORT[x.code] || x.code).join(" · "))}</span>` : ""}</div>`).join("") : `<div class="empty">Nothing here.</div>`;
+  $$("#items .item").forEach(el => el.onclick = e => { if (e.target.classList.contains("pk")) return; S.sel = +el.dataset.id; renderList(); renderEditor(); });
+  $$("#items .pk").forEach(cb => cb.onclick = e => {
+    const id = +cb.dataset.pk, ids = v.map(r => r.id);
+    if (e.shiftKey && S.lastPick !== null && ids.includes(S.lastPick)) {
+      const [a, b] = [ids.indexOf(S.lastPick), ids.indexOf(id)].sort((x, y) => x - y);
+      ids.slice(a, b + 1).forEach(i => cb.checked ? S.picked.add(i) : S.picked.delete(i));
+    } else { cb.checked ? S.picked.add(id) : S.picked.delete(id); }
+    S.lastPick = id; renderList();
+  });
+  $("#pickAll").checked = v.length > 0 && v.every(r => S.picked.has(r.id));
+  renderBulk();
+}
+const REASON_SHORT = {not_me: "you are not among the authors", no_type: "unknown type", no_crossref: "no Crossref match",
+  crossref_error: "Crossref unreachable", weak_match: "weak Crossref match", hal_unchecked: "HAL not checked"};
+$("#pickAll").onchange = e => { visible().forEach(r => e.target.checked ? S.picked.add(r.id) : S.picked.delete(r.id)); renderList(); };
+function renderBulk() {
+  const n = S.picked.size; $("#bulk").hidden = !n; if (!n) return;
+  $("#bulkN").textContent = `${n} selected`;
+  const fill = (sel, opts, first) => { const cur = sel.value; sel.innerHTML = `<option value="">${first}</option>` + opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join(""); sel.value = cur; };
+  fill($("#bulkAction"), Object.keys(S.state.actions).map(a => [a, a]), "set action…");
+  fill($("#bulkType"), Object.entries(S.state.types).map(([k, v]) => [k, `${k} — ${v}`]), "set type…");
+  fill($("#bulkDom"), S.shortlist.map(c => [c, `${c} ${S.labels[c] || ""}`]), "add discipline…");
+}
+async function bulk(fields, add_domain = "") {
+  const ids = [...S.picked];
+  if (!ids.length) return;
+  await api("/api/bulk", {method: "POST", json: {ids, fields, add_domain}});
+  toast(`${ids.length} reference(s) updated`);
+  await loadRows();
+}
+$("#bulkApply").onclick = () => {
+  const f = {}; if ($("#bulkAction").value) f.action = $("#bulkAction").value; if ($("#bulkType").value) f.hal_type = $("#bulkType").value;
+  if (!Object.keys(f).length && !$("#bulkDom").value) return toast("Choose an action, a type or a discipline");
+  bulk(f, $("#bulkDom").value).then(() => { $("#bulkAction").value = $("#bulkType").value = $("#bulkDom").value = ""; });
+};
+$("#bulkVal").onclick = () => bulk({validated: "yes"});
+$("#bulkClear").onclick = () => { S.picked.clear(); renderList(); };
+let CHK = new Set();
+function field(r, name, label, bad) {
+  const v = r[name] ?? "", cls = bad ? "bad-field" : (CHK.has(name) ? "chk-field" : "");
+  if (SELECTS[name]) return `<div><label>${esc(label)}</label><select data-f="${name}" class="${cls}">${["", ...SELECTS[name]].map(o => `<option ${o === v ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`;
+  return `<div><label>${esc(label)}${CHK.has(name) && !bad ? ' <span class="warn">check</span>' : ""}</label><input type="text" data-f="${name}" value="${esc(v)}" class="${cls}"></div>`;
+}
+function renderEditor() {
+  const r = S.rows.find(x => x.id === S.sel), ed = $("#editor");
+  if (!r) { ed.innerHTML = `<div class="card empty">Select a reference on the left.</div>`; return; }
+  const missing = new Set((r.problems || []).map(p => p.split(" ")[0]));
+  const reasons = (r.reasons || []).filter(x => r.action === "check" || r.action === "deposit" || x.code === "attach" || x.code === "duplicate");
+  CHK = new Set(reasons.flatMap(x => x.fields));
+  const t = r.hal_type, isConf = t === "COMM" || t === "POSTER", needsInst = ["THESE","HDR","MEM","REPORT"].includes(t);
+  const authors = (r.authors || "").split(";").map(s => s.trim()).filter(Boolean);
+  const me = parseInt(r.me_position || "0", 10);
+  const domains = (r.domain || "").split(/[;,\s]+/).filter(Boolean);
+  const grid = list => list.map(([n, l]) => field(r, n, l, missing.has(n))).join("");
+  ed.innerHTML = `<div class="card">
+    <div class="row" style="justify-content:space-between"><span class="badge a-${esc(r.action)}">${esc(r.action)}</span>
+      <span class="muted mono">${esc(r.key)} · ${esc(r.match || "")}</span></div>
+    ${reasons.length ? `<div class="checkbox-box"><b>${r.action === "check" ? "Why this needs checking" : "Note"}:</b><ul>${reasons.map(x => `<li>${esc(x.msg)}</li>`).join("")}</ul>
+      ${r.action === "check" ? `<div class="row" style="margin-top:6px"><button class="b" data-quick="deposit">It's fine → deposit</button><button class="b" data-quick="skip">Not mine / leave out → skip</button></div>` : ""}</div>` : ""}
+    <label>Title${CHK.has("title") ? ' <span class="warn">check</span>' : ""}</label><textarea data-f="title" style="min-height:44px" class="${CHK.has("title") ? "chk-field" : ""}">${esc(r.title)}</textarea>
+    <div class="row muted" style="margin-top:6px">
+      ${r.doi ? `<a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">DOI ↗</a>` : "no DOI"}
+      ${r.hal_url ? ` · <a href="${esc(r.hal_url)}" target="_blank" rel="noopener">already in HAL: ${esc(r.hal_id)} ↗</a>` : ""}
+      ${r.hal_status === "in_hal_not_linked" ? ` · <span class="warn">not linked to your IdHAL — link it in HAL (Mes publications)</span>` : ""}
+    </div>
+    ${r.action === "deposit" ? (r.problems.length ? `<div class="problems"><b>Missing before deposit:</b> ${esc(r.problems.join(", "))}</div>` : `<div class="good">Ready to deposit.</div>`) : ""}
+    <div class="grid">
+      <div><label>Action</label><select data-f="action">${Object.keys(S.state.actions).map(a => `<option value="${a}" ${a === r.action ? "selected" : ""}>${a}</option>`).join("")}</select>
+        <small class="muted">${esc(S.state.actions[r.action] || "")}</small></div>
+      <div><label>HAL type</label><select data-f="hal_type" class="${missing.has("hal_type") ? "bad-field" : CHK.has("hal_type") ? "chk-field" : ""}"><option value=""></option>${Object.entries(S.state.types).map(([k, v]) => `<option value="${k}" ${k === t ? "selected" : ""}>${k} — ${esc(v)}</option>`).join("")}</select></div>
+    </div>
+
+    <label>Discipline(s) ${missing.has("domain") ? '<span class="bad">required</span>' : ""}</label>
+    <div id="domChips">${domains.map(c => `<span class="chip sel"><code>${esc(c)}</code>${esc(S.labels[c] || "")}<button data-drm="${esc(c)}">×</button></span>`).join("") || '<span class="muted">none</span>'}</div>
+    <div style="margin-top:4px">${S.shortlist.filter(c => !domains.includes(c)).map(c => `<span class="chip click" data-dadd="${esc(c)}">+ <code>${esc(c)}</code>${esc(S.labels[c] || "")}</span>`).join("")}</div>
+    <div class="row" style="margin-top:6px"><input type="text" id="edDomQ" placeholder="search another discipline" style="flex:1"><button class="b" id="edDomGo">Search</button></div>
+    <div class="results" id="edDomRes" hidden></div>
+
+    <div class="authors ${CHK.has("authors") ? "chk" : ""}"><label>Authors <small>(${authors.length}) — you are #${me || "?"}</small>${CHK.has("authors") ? ' <span class="warn">check</span>' : ""}</label>
+      <ol>${authors.map((a, i) => `<li class="${i + 1 === me ? "me" : ""}">${esc(a)}</li>`).join("")}</ol>
+      <details><summary class="muted" style="cursor:pointer;margin-top:4px">edit authors</summary><textarea data-f="authors">${esc(r.authors)}</textarea><small class="muted">Family, Given; Family, Given; …</small></details>
+    </div>
+    <div class="grid">${grid(FIELDS.me)}</div>
+    <div class="grid">${grid(FIELDS.base)}</div>
+    ${isConf ? `<div class="grid">${grid(FIELDS.conf)}${field(r, "proceedings", "With proceedings", false)}${field(r, "invited", "Invited talk", false)}</div>` : ""}
+    ${needsInst ? `<div class="grid">${grid(FIELDS.inst)}</div>` : ""}
+    <div class="grid">${field(r, "audience", "Audience", false)}${field(r, "peer_reviewed", "Peer reviewed", false)}${grid(FIELDS.more)}</div>
+    <details style="margin-top:10px"><summary class="muted" style="cursor:pointer">abstract</summary><textarea data-f="abstract" style="min-height:120px">${esc(r.abstract)}</textarea></details>
+
+    <div class="row" style="margin-top:16px">
+      <button class="b p" id="valNext">${r.validated === "yes" ? "Save & next" : "Validate & next"}</button>
+      <button class="b" id="saveRow">Save</button>
+      <button class="b" id="teiBtn">Preview TEI</button>
+      ${r.validated === "yes" ? '<span class="ok">✓ validated</span>' : ""}
+    </div></div>`;
+
+  const collect = () => { const o = {}; $$("[data-f]", ed).forEach(i => o[i.dataset.f] = i.value); o.domain = domains.join(";"); return o; };
+  const save = async (extra = {}) => {
+    const d = await api("/api/rows/" + r.id, {method: "POST", json: {...collect(), ...extra}});
+    const i = S.rows.findIndex(x => x.id === r.id); S.rows[i] = d.row; renderFilters(); renderList(); return d.row;
+  };
+  $$("[data-drm]", ed).forEach(b => b.onclick = async () => { domains.splice(domains.indexOf(b.dataset.drm), 1); await save(); renderEditor(); });
+  $$("[data-dadd]", ed).forEach(b => b.onclick = async () => { domains.push(b.dataset.dadd); await save(); renderEditor(); });
+  $("#edDomGo").onclick = () => searchDomains($("#edDomQ").value, $("#edDomRes"), async code => { if (!domains.includes(code)) domains.push(code); await save(); renderEditor(); });
+  $("#edDomQ").onkeydown = e => { if (e.key === "Enter") $("#edDomGo").click(); };
+  $$("select[data-f=hal_type], select[data-f=action]", ed).forEach(s => s.onchange = async () => { await save(); renderEditor(); });
+  $("#saveRow").onclick = async () => { await save(); renderEditor(); toast("Saved"); };
+  $("#valNext").onclick = async () => {
+    await save({validated: "yes"});
+    const v = visible(), pos = v.findIndex(x => x.id === r.id);
+    const next = v[pos + 1] || v.find(x => x.id !== r.id && isTodo(x));
+    if (next) S.sel = next.id; renderList(); renderEditor(); toast("Validated");
+  };
+  $$("[data-quick]", ed).forEach(b => b.onclick = async () => { await save({action: b.dataset.quick}); renderEditor(); toast("Action: " + b.dataset.quick); });
+  $("#teiBtn").onclick = async () => {
+    await save();
+    try { const d = await api("/api/tei/" + r.id); $("#modalTitle").textContent = "TEI preview — " + r.key; $("#modalBody").textContent = d.xml; $("#modal").classList.add("on"); }
+    catch (e) { toast(e.message); }
+  };
+}
+$("#modalClose").onclick = () => $("#modal").classList.remove("on");
+$("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").classList.remove("on"); };
+
+// ------------------------------------------------------------------ deposit
+async function loadDeposit() {
+  const d = await api("/api/ready"), a = d.auth;
+  $("#loginState").innerHTML = a.signed_in
+    ? `<div class="row" style="margin:6px 0 10px"><div class="avatar" style="width:28px;height:28px;font-size:13px">${esc(a.login[0].toUpperCase())}</div><span>Signed in to HAL as <b>${esc(a.login)}</b></span></div>`
+    : `<p class="problems">Not signed in to HAL — <a href="#" id="toSet">sign in in Settings</a>.</p>`;
+  const ts = $("#toSet"); if (ts) ts.onclick = e => { e.preventDefault(); show("settings"); };
+  const todo = d.ready.filter(r => !r.done);
+  $("#depositGo").disabled = $("#testGo").disabled = !a.signed_in || !todo.length;
+  const status = r => r.done ? '<span class="ok">in HAL ✓</span>'
+    : r.test ? (r.test.ok ? '<span class="ok">check passed</span>' : `<span class="bad">check failed</span><br><small>${esc(r.test.message)}</small>`)
+    : '<span class="muted">not checked yet</span>';
+  $("#readyList").innerHTML = d.ready.length ? `<table><tr><th><input type="checkbox" id="all" checked></th><th>Title</th><th>Type</th><th>Year</th><th>Status</th></tr>` +
+    d.ready.map(r => `<tr><td><input type="checkbox" class="pick" value="${esc(r.key)}" ${r.done ? "disabled" : "checked"}></td><td>${esc(r.title)}</td><td>${esc(r.hal_type)}</td><td>${esc(r.year)}</td><td>${status(r)}</td></tr>`).join("") + `</table>`
+    : `<p class="muted">Nothing ready. Mark references as <b>deposit</b> and complete them in Review.</p>`;
+  const all = $("#all"); if (all) all.onchange = () => $$(".pick:not(:disabled)").forEach(c => c.checked = all.checked);
+  $("#blockedCard").hidden = !d.blocked.length;
+  $("#blocked").innerHTML = d.blocked.map(b => `<div class="item" data-key="${esc(b.key)}"><span class="badge a-check">fix</span><span class="m">${esc(b.problems.join(", "))}</span><span></span><span class="t">${esc(b.title)}</span></div>`).join("");
+  $$("#blocked .item").forEach(el => el.onclick = async () => { S.filter = "all"; show("review"); await loadRows(); const r = S.rows.find(x => x.key === el.dataset.key); if (r) { S.sel = r.id; renderList(); renderEditor(); } });
+  const log = (await api("/api/log")).log;
+  $("#history").innerHTML = log.length ? `<table><tr><th>Date</th><th>What</th><th>Result</th><th>HAL id</th><th>Title</th></tr>` + log.map(e =>
+    `<tr><td class="mono">${esc(e.date)}</td><td>${e.target.endsWith("-test") ? "check" : "submission"}</td><td>${e.ok === "True" ? '<span class="ok">OK</span>' : `<span class="bad">error ${esc(e.status)}</span><br><small>${esc(e.message)}</small>`}</td><td class="mono">${e.hal_id ? `<a href="https://hal.science/${esc(e.hal_id)}" target="_blank" rel="noopener">${esc(e.hal_id)}</a>` : ""}</td><td>${esc(e.title)}</td></tr>`).join("") + `</table>` : "Nothing submitted yet.";
+}
+function askConfirm(n, login) {
+  return new Promise(res => {
+    $("#confirmText").innerHTML = `<b>${n}</b> reference${n > 1 ? "s" : ""} will be submitted to HAL under your account <b>${esc(login)}</b>.`;
+    const m = $("#confirmModal"); m.classList.add("on");
+    const done = v => { m.classList.remove("on"); res(v); };
+    $("#confirmYes").onclick = () => done(true); $("#confirmNo").onclick = () => done(false);
+    m.onclick = e => { if (e.target === m) done(false); };
+  });
+}
+async function runDeposit(test) {
+  const keys = $$(".pick:checked").map(c => c.value);
+  if (!keys.length) return toast("Nothing selected");
+  const limit = +$("#depLimit").value || 0, n = limit ? Math.min(limit, keys.length) : keys.length;
+  if (!test && !(await askConfirm(n, S.auth.login))) return;
+  try {
+    $("#depositGo").disabled = $("#testGo").disabled = true;
+    $("#depTitle").textContent = test ? "Checking with HAL — nothing is created…" : "Submitting to HAL…";
+    await api("/api/deposit", {method: "POST", json: {keys, test, limit, confirm: test ? "" : "yes"}});
+    pollJob(() => { loadDeposit(); }, {card: $("#depJob"), bar: $("#depBar"), log: $("#depLog"), title: $("#depTitle")});
+  } catch (e) { $("#depositGo").disabled = $("#testGo").disabled = false; toast(e.message); }
+}
+$("#depositGo").onclick = () => runDeposit(false);
+$("#testGo").onclick = () => runDeposit(true);
+
+// ------------------------------------------------------------------ start
+(async () => {
+  try {
+    await loadState();
+    let tab = null; try { tab = localStorage.getItem("bib2hal.tab"); } catch (e) {}
+    if (!tab) tab = S.state.config.BIB2HAL_ME ? (S.state.n_rows ? "review" : "import") : "settings";
+    show(tab);
+    if (S.state.job.running) show("import");
+  } catch (e) { document.body.innerHTML = `<div class="empty bad">Cannot reach the bib2hal server: ${esc(e.message)}<br>Is <span class="mono">bib2hal ui</span> still running?</div>`; }
+})();
+</script>
+</body>
+</html>
