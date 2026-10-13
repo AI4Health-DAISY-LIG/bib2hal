@@ -23,6 +23,7 @@ class TestApp(unittest.TestCase):
             self.assertEqual(app.main([]), 0)
             run.assert_called_once()
             self.assertEqual(Path.cwd().resolve(), (Path(d) / "w").resolve())
+            os.chdir(cwd)          # Windows cannot delete the current directory: leave it before the temp dir is removed
 
     def test_arguments_go_to_cli(self):
         with mock.patch("bib2hal.cli.main", return_value=7) as m:
