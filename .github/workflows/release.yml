@@ -81,20 +81,31 @@ jobs:
           merge-multiple: true
       - name: Checksums
         run: cd assets && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      - name: Release notes
+        # packaging/release-notes/<tag>.md if it exists, otherwise a default text with the download table.
+        shell: bash
+        run: |
+          f="src/packaging/release-notes/${GITHUB_REF_NAME}.md"
+          if [ -f "$f" ]; then cp "$f" notes.md; else
+            {
+              echo "## Download"
+              echo "| System | File |"
+              echo "|---|---|"
+              echo "| Windows 10/11 | \`bib2hal-windows-x64.exe\` |"
+              echo "| macOS (Apple Silicon) | \`bib2hal-macos-arm64.zip\` |"
+              echo "| Linux | \`bib2hal-linux-x64.zip\` |"
+              echo
+              echo "Double-click to start: the interface opens in your browser and your files are kept in \`Documents/bib2hal\`."
+            } > notes.md
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           files: assets/*
-          generate_release_notes: true
-          body: |
-            ## Download
-            | System | File |
-            |---|---|
-            | Windows 10/11 | `bib2hal-windows-x64.exe` |
-            | macOS (Apple Silicon) | `bib2hal-macos-arm64.zip` |
-            | Linux | `bib2hal-linux-x64.zip` |
-
-            Double-click to start: the interface opens in your browser and your files are kept in
-            `Documents/bib2hal`. See the README for the first-launch security prompts (unsigned app).
+          body_path: notes.md
+          generate_release_notes: true      # adds the list of changes since the previous tag below the notes
 
   docs:
     # Re-publish the documentation website once the release exists (its download page lists the new files).
