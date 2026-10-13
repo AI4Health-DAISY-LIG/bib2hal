@@ -185,6 +185,5 @@ cython_debug/
 *.csv
 tei/
 *.pdf
-*.bib
 # bib2hal: the PyInstaller recipe is part of the project
 !packaging/bib2hal.spec

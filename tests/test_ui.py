@@ -106,13 +106,13 @@ class TestUI(unittest.TestCase):
 
     def test_full_pipeline(self):
         # 1. settings: HAL credentials can no longer be set through the settings form
-        code, _ = self.call("/api/config", {"values": {"BIB2HAL_ME": "Muller, Sandrine", "BIB2HAL_IDHAL": "sandrine-muller",
+        code, _ = self.call("/api/config", {"values": {"BIB2HAL_ME": "Dupont, Ada", "BIB2HAL_IDHAL": "ada-dupont",
                                                        "BIB2HAL_STRUCTS": "1234", "BIB2HAL_STRUCTS_SINCE": "2021",
                                                        "BIB2HAL_DOMAINS": "info.info-ai;sdv.neu",
                                                        "HAL_LOGIN": "me", "HAL_PASSWORD": "secret"}})
         self.assertEqual(code, 200)
         env = (self.dir / ".env").read_text(encoding="utf-8")
-        self.assertIn("BIB2HAL_IDHAL=sandrine-muller", env)
+        self.assertIn("BIB2HAL_IDHAL=ada-dupont", env)
         self.assertNotIn("secret", env)
         self.assertNotIn("HAL_LOGIN", env)
         _, st = self.call("/api/state")
@@ -152,7 +152,7 @@ class TestUI(unittest.TestCase):
         self.assertTrue((self.dir / "scholar.bib").exists() and (self.dir / "review.csv").exists())
         _, d = self.call("/api/rows")
         rows = {r["key"]: r for r in d["rows"]}
-        conf = rows["muller2023kg"]
+        conf = rows["dupont2023rl"]
         self.assertEqual(conf["action"], "deposit")
         self.assertEqual(conf["problems"], ["my_structs"])                    # affiliation is picked by the user
         _, d2 = self.call(f"/api/rows/{conf['id']}", {"my_structs": "1234"})
@@ -162,23 +162,23 @@ class TestUI(unittest.TestCase):
         # 3b. why 'check' rows need checking
         self.assertEqual([x["code"] for x in rows["homonym2010"]["reasons"]], ["not_me", "no_crossref"])
         self.assertIn("me_position", rows["homonym2010"]["reasons"][0]["fields"])
-        self.assertEqual([x["code"] for x in rows["muller2024preprint"]["reasons"]], ["no_crossref"])
+        self.assertEqual([x["code"] for x in rows["dupont2024preprint"]["reasons"]], ["no_crossref"])
 
         # 3c. bulk change: several rows at once
-        ids = [rows["homonym2010"]["id"], rows["muller2020deep_dup"]["id"]]
+        ids = [rows["homonym2010"]["id"], rows["dupont2020deep_dup"]["id"]]
         code, _ = self.call("/api/bulk", {"ids": ids, "fields": {"action": "skip", "validated": "yes"},
                                           "add_domain": "sdv.neu"})
         self.assertEqual(code, 200)
         self.assertEqual(self.call("/api/bulk", {"ids": ids, "fields": {"action": "nonsense"}})[0], 400)
         _, d = self.call("/api/rows")
         after = {r["key"]: r for r in d["rows"]}
-        for k in ("homonym2010", "muller2020deep_dup"):
+        for k in ("homonym2010", "dupont2020deep_dup"):
             self.assertEqual((after[k]["action"], after[k]["validated"]), ("skip", "yes"))
             self.assertIn("sdv.neu", after[k]["domain"].split(";"))
-        self.assertEqual(after["muller2023kg"]["action"], "deposit")       # untouched
+        self.assertEqual(after["dupont2023rl"]["action"], "deposit")       # untouched
 
         # 4. edit a row: make the preprint depositable
-        pre = rows["muller2024preprint"]
+        pre = rows["dupont2024preprint"]
         code, d = self.call(f"/api/rows/{pre['id']}", {"action": "deposit", "validated": "yes", "my_structs": "1234"})
         self.assertEqual(code, 200)
         self.assertEqual(d["row"]["problems"], [])
@@ -186,21 +186,21 @@ class TestUI(unittest.TestCase):
         self.assertIn("halTypology", d["xml"])
 
         # 5. test with HAL (X-test): nothing created, does not count as deposited
-        self.call("/api/deposit", {"keys": ["muller2023kg"], "test": True})
+        self.call("/api/deposit", {"keys": ["dupont2023rl"], "test": True})
         self.wait_job()
         self.assertEqual(self.sent, [("me", True)])
         _, d = self.call("/api/ready")
-        tested = {r["key"]: r for r in d["ready"]}["muller2023kg"]
+        tested = {r["key"]: r for r in d["ready"]}["dupont2023rl"]
         self.assertEqual((tested["done"], tested["test"]["ok"]), (False, True))
         self.sent.clear()
 
         # 5b. deposit: refused without confirmation; confirmed twice -> sent once
-        self.assertEqual(self.call("/api/deposit", {"keys": ["muller2023kg"]})[0], 400)
+        self.assertEqual(self.call("/api/deposit", {"keys": ["dupont2023rl"]})[0], 400)
         _, d = self.call("/api/ready")
-        self.assertEqual(sorted(r["key"] for r in d["ready"]), ["muller2023kg", "muller2024preprint"])
-        self.call("/api/deposit", {"keys": ["muller2023kg"], "confirm": "yes"})
+        self.assertEqual(sorted(r["key"] for r in d["ready"]), ["dupont2023rl", "dupont2024preprint"])
+        self.call("/api/deposit", {"keys": ["dupont2023rl"], "confirm": "yes"})
         self.wait_job()
-        self.call("/api/deposit", {"keys": ["muller2023kg"], "confirm": "yes"})
+        self.call("/api/deposit", {"keys": ["dupont2023rl"], "confirm": "yes"})
         self.wait_job()
         self.assertEqual(self.sent, [("me", False)])
         _, d = self.call("/api/log")
@@ -227,11 +227,11 @@ class TestUI(unittest.TestCase):
 
     def test_reimport_keeps_review_and_skips_known(self):
         rows = self._import(name="scholar.bib")
-        conf = rows["muller2023kg"]
+        conf = rows["dupont2023rl"]
         self.call(f"/api/rows/{conf['id']}", {"title": "My corrected title", "my_structs": "1234", "validated": "yes"})
         # the user adds a paper to the .bib, then re-analyses the file already in the folder
         bib = (self.dir / "scholar.bib").read_text(encoding="utf-8") + (
-            "\n@article{new2025,\n title={A brand new paper},\n author={Muller, Sandrine},\n journal={J},\n year={2025}\n}\n")
+            "\n@article{new2025,\n title={A brand new paper},\n author={Dupont, Ada},\n journal={J},\n year={2025}\n}\n")
         (self.dir / "scholar.bib").write_text(bib, encoding="utf-8")
         import bib2hal.hal as halmod
         with mock.patch("bib2hal.pipeline.find", wraps=halmod.find) as f:
@@ -240,11 +240,11 @@ class TestUI(unittest.TestCase):
             rows2 = self._import(reuse="scholar.bib")
             self.assertEqual(f.call_count, 1)                       # only the new reference was looked up
         self.assertEqual(len(rows2), 7)
-        self.assertEqual(rows2["muller2023kg"]["title"], "My corrected title")   # edits kept
-        self.assertEqual(rows2["muller2023kg"]["validated"], "yes")
+        self.assertEqual(rows2["dupont2023rl"]["title"], "My corrected title")   # edits kept
+        self.assertEqual(rows2["dupont2023rl"]["validated"], "yes")
         self.assertIn("new2025", rows2)
         rows3 = self._import(reuse="scholar.bib", mode="replace")    # replace mode starts over
-        self.assertNotEqual(rows3["muller2023kg"]["title"], "My corrected title")
+        self.assertNotEqual(rows3["dupont2023rl"]["title"], "My corrected title")
 
     def test_export_bib(self):
         self._import(name="scholar.bib")
@@ -254,13 +254,13 @@ class TestUI(unittest.TestCase):
             self.assertIn("attachment", r.headers["Content-Disposition"])
         from bib2hal.bibtex import parse_bibtex
         keys = [e["ID"] for e in parse_bibtex(text)]
-        self.assertIn("muller2023kg", keys)
-        self.assertNotIn("muller2020deep_dup", keys)               # duplicates left out
+        self.assertIn("dupont2023rl", keys)
+        self.assertNotIn("dupont2020deep_dup", keys)               # duplicates left out
         self.assertTrue((self.dir / "bib2hal-export.bib").exists())
 
     def test_pdf_upload(self):
         rows = self._import(name="scholar.bib")
-        i = rows["muller2023kg"]["id"]
+        i = rows["dupont2023rl"]["id"]
         self.assertEqual(self.call(f"/api/pdf/{i}?name=x.pdf", raw=b"not a pdf")[0], 400)
         code, d = self.call(f"/api/pdf/{i}?name=paper.pdf", raw=b"%PDF-1.4 fake")
         self.assertEqual(code, 200)
@@ -270,33 +270,33 @@ class TestUI(unittest.TestCase):
         self.assertEqual(d["row"]["pdf"], "")
 
     def test_struct_names(self):
-        os.environ["BIB2HAL_STRUCT_NAMES"] = "1234:LIG — Laboratoire d'Informatique de Grenoble"
-        with mock.patch("bib2hal.ui.structure_names", return_value={"999": "UGA — Université Grenoble Alpes"}) as m:
+        os.environ["BIB2HAL_STRUCT_NAMES"] = "1234:LAB — Laboratoire d'Exemple"
+        with mock.patch("bib2hal.ui.structure_names", return_value={"999": "UDE — Université d'Exemple"}) as m:
             _, d = self.call("/api/structnames?ids=1234;999")
             m.assert_called_once_with(["999"])                      # saved names are not asked again
-        self.assertEqual(d["names"], {"1234": "LIG — Laboratoire d'Informatique de Grenoble",
-                                      "999": "UGA — Université Grenoble Alpes"})
+        self.assertEqual(d["names"], {"1234": "LAB — Laboratoire d'Exemple",
+                                      "999": "UDE — Université d'Exemple"})
 
     def test_failed_submission_is_explained(self):
         rows = self._import(name="scholar.bib")
-        conf = rows["muller2023kg"]
+        conf = rows["dupont2023rl"]
         self.assertEqual(self.call(f"/api/rows/{conf['id']}", {"my_structs": "1234", "me_position": "1"})[1]["row"]["problems"], [])
         self.call("/api/auth/login", {"login": "me", "password": "secret"})
         err = ("ERROR The supplied XML description does not validate the AOfr schema... Element "
                "'{http://www.tei-c.org/ns/1.0}surname': This element is not expected. Expected is "
                "( {http://www.tei-c.org/ns/1.0}forename ).")
         self.app.deposit_fn = lambda *a, **k: {"ok": False, "status": 406, "hal_id": "", "message": err, "raw": ""}
-        self.call("/api/deposit", {"keys": ["muller2023kg"], "confirm": "yes"})
+        self.call("/api/deposit", {"keys": ["dupont2023rl"], "confirm": "yes"})
         self.wait_job()
-        r = {x["key"]: x for x in self.call("/api/rows")[1]["rows"]}["muller2023kg"]
+        r = {x["key"]: x for x in self.call("/api/rows")[1]["rows"]}["dupont2023rl"]
         self.assertEqual(r["last_error"]["title"], "An author has no first name")
         _, d = self.call("/api/ready")
-        self.assertEqual([f["key"] for f in d["failed"]], ["muller2023kg"])
+        self.assertEqual([f["key"] for f in d["failed"]], ["dupont2023rl"])
         self.assertEqual(d["ready"][0]["error"]["what"], "submission")
         self.app.deposit_fn = lambda *a, **k: {"ok": True, "status": 202, "hal_id": "", "message": "", "raw": ""}
-        self.call("/api/deposit", {"keys": ["muller2023kg"], "test": True})   # a later successful check clears it
+        self.call("/api/deposit", {"keys": ["dupont2023rl"], "test": True})   # a later successful check clears it
         self.wait_job()
-        r = {x["key"]: x for x in self.call("/api/rows")[1]["rows"]}["muller2023kg"]
+        r = {x["key"]: x for x in self.call("/api/rows")[1]["rows"]}["dupont2023rl"]
         self.assertIsNone(r["last_error"])
 
 

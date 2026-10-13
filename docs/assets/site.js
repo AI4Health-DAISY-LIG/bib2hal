@@ -72,6 +72,6 @@
     })
     .catch(function () {
       document.getElementById("latest-meta").innerHTML = "";
-      dl.innerHTML = '<a class="os rec" href="https://github.com/' + REPO + '/releases/latest"><b>All downloads</b><span>Open the latest release on GitHub</span></a>';
+      dl.innerHTML = '<a class="os rec" href="https://github.com/' + REPO + '/releases"><b>No version published yet</b><span>The first release is being prepared. Check the releases page on GitHub, or come back soon.</span></a>';
     });
 })();

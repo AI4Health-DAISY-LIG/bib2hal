@@ -42,7 +42,7 @@ class TestPolite(unittest.TestCase):
         self.assertTrue(all(r["action"] != "deposit" for r in rows))
 
     def test_deposit_stops_when_blocked(self):
-        rows = [{"key": f"k{i}", "title": f"T{i}", "authors": "Muller, S", "hal_type": "UNDEFINED", "year": "2024",
+        rows = [{"key": f"k{i}", "title": f"T{i}", "authors": "Dupont, A", "hal_type": "UNDEFINED", "year": "2024",
                  "domain": "info", "language": "en", "me_position": "1", "my_structs": "1", "pdf": ""}
                 for i in range(3)]
         sent = []

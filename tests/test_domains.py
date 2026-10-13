@@ -43,17 +43,17 @@ class TestDomains(unittest.TestCase):
     def test_suggest(self):
         d = dom.load_domains(cache=self.cache)
         short = ["info.info-ai", "sdv.neu", "sdv.bibs"]
-        self.assertEqual(dom.suggest(short, d, "Cognition and neurons: an fMRI study"), "sdv.neu")
+        self.assertEqual(dom.suggest(short, d, "Cognition and neurons: a brain imaging study"), "sdv.neu")
         self.assertEqual(dom.suggest(short, d, "Something unrelated"), "info.info-ai")   # default = first
         self.assertEqual(dom.suggest([], d, "x"), "")
 
     def test_write_env(self):
         env = self.dir / ".env"
-        env.write_text("BIB2HAL_ME=Muller, Sandrine\nBIB2HAL_DOMAINS=info\n", encoding="utf-8")
+        env.write_text("BIB2HAL_ME=Dupont, Ada\nBIB2HAL_DOMAINS=info\n", encoding="utf-8")
         dom.write_env_value("BIB2HAL_DOMAINS", "sdv.neu;info.info-ai", env)
-        dom.write_env_value("BIB2HAL_IDHAL", "sandrine-muller", env)
+        dom.write_env_value("BIB2HAL_IDHAL", "ada-dupont", env)
         self.assertEqual(env.read_text(encoding="utf-8"),
-                         "BIB2HAL_ME=Muller, Sandrine\nBIB2HAL_DOMAINS=sdv.neu;info.info-ai\nBIB2HAL_IDHAL=sandrine-muller\n")
+                         "BIB2HAL_ME=Dupont, Ada\nBIB2HAL_DOMAINS=sdv.neu;info.info-ai\nBIB2HAL_IDHAL=ada-dupont\n")
 
     def test_pick_and_validate(self):
         cwd = os.getcwd()

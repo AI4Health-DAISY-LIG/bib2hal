@@ -68,9 +68,9 @@ class TestCredentials(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             env = Path(d) / ".env"
-            env.write_text("BIB2HAL_ME=Muller, S\nHAL_LOGIN=me\nHAL_PASSWORD=secret\n", encoding="utf-8")
+            env.write_text("BIB2HAL_ME=Dupont, A\nHAL_LOGIN=me\nHAL_PASSWORD=secret\n", encoding="utf-8")
             ui._drop_env_keys(env, ("HAL_LOGIN", "HAL_PASSWORD"))
-            self.assertEqual(env.read_text(encoding="utf-8"), "BIB2HAL_ME=Muller, S\n")
+            self.assertEqual(env.read_text(encoding="utf-8"), "BIB2HAL_ME=Dupont, A\n")
 
 
 if __name__ == "__main__":

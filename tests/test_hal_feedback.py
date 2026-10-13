@@ -13,25 +13,25 @@ NS = {"t": TEI_NS}
 def row(**kw):
     r = {c: "" for c in COLUMNS}
     r.update(action="deposit", hal_type="ART", title="T", year="2022", venue="J", domain="info", language="en",
-             me_position="1", my_structs="1", authors="Muller, Sandrine")
+             me_position="1", my_structs="1", authors="Dupont, Ada")
     r.update(kw)
     return r
 
 
 class TestHalFeedback(unittest.TestCase):
     def test_consortium_author_left_out(self):
-        r = row(authors="Unni, Deepak; The Biomedical Data Translator Consortium; Muller, Sandrine", me_position="3")
+        r = row(authors="Nguyen, Linh; The Example Research Consortium; Dupont, Ada", me_position="3")
         self.assertEqual(missing_fields(r), [])
         root = ET.fromstring(build_tei(r))
         names = [a.find("t:persName/t:surname", NS).text for a in root.findall(".//t:analytic/t:author", NS)]
-        self.assertEqual(names, ["Unni", "Muller"])
+        self.assertEqual(names, ["Nguyen", "Dupont"])
         for a in root.findall(".//t:analytic/t:author", NS):          # every person has a forename
             self.assertIsNotNone(a.find("t:persName/t:forename", NS))
         me = root.findall(".//t:analytic/t:author", NS)[1]
         self.assertEqual(me.find("t:affiliation", NS).get("ref"), "#struct-1")   # still the right person
 
     def test_person_without_given_name_is_flagged(self):
-        self.assertIn("authors: 'Smith' has no given name", missing_fields(row(authors="Muller, Sandrine; Smith")))
+        self.assertIn("authors: 'Smith' has no given name", missing_fields(row(authors="Dupont, Ada; Smith")))
 
     def test_thesis_needs_supervisor(self):
         r = row(hal_type="THESE", venue="", institution="Université de Lausanne")
