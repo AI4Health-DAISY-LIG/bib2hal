@@ -13,7 +13,7 @@ from .crossref import enrich, from_bibtex
 from .hal import find, guess_type, sword_deposit
 from .review import build_row, missing_fields, suggest_action
 from .tei import build_package
-from .util import BlockedError, HttpError, cfg
+from .util import BlockedError, HttpError, cfg, norm_doi, similarity
 
 LOG_COLUMNS = ["date", "target", "key", "title", "ok", "status", "hal_id", "message"]
 Progress = Callable[[int, int, dict], None]
@@ -28,20 +28,36 @@ def me() -> tuple[str, str] | None:
 
 
 def structs_for(year: str) -> str:
-    structs, since = cfg("BIB2HAL_STRUCTS"), cfg("BIB2HAL_STRUCTS_SINCE")
-    if not structs:
-        return ""
-    if since and (not year or not year.isdigit() or int(year) < int(since)):
-        return ""
-    return structs
+    """Affiliations are never pre-filled: the user picks them per paper (their saved labs are offered)."""
+    return ""
+
+
+def find_existing(w: dict, rows: list[dict]) -> dict | None:
+    """The already-reviewed row for this reference (same BibTeX key, DOI, or very similar title + year)."""
+    doi = norm_doi(w.get("doi", ""))
+    for r in rows:
+        if w.get("key") and r.get("key") == w["key"]:
+            return r
+        if doi and norm_doi(r.get("doi", "")) == doi:
+            return r
+    for r in rows:
+        if similarity(r.get("title", ""), w.get("title", "")) >= 0.95 and \
+                (not w.get("year") or not r.get("year") or r["year"] == w["year"]):
+            return r
+    return None
 
 
 def review_bib(text: str, no_crossref: bool = False, no_hal: bool = False, limit: int = 0,
-               progress: Progress | None = None) -> list[dict]:
-    """BibTeX text -> list of review rows (enriched, checked against HAL, action suggested)."""
+               progress: Progress | None = None, known: list[dict] | None = None) -> list[dict]:
+    """BibTeX text -> list of review rows (enriched, checked against HAL, action suggested).
+
+    known: rows already reviewed; references found there are skipped (no new Crossref/HAL queries).
+    """
     entries = parse_bibtex(text)
     if limit:
         entries = entries[:limit]
+    if known:
+        entries = [e for e in entries if find_existing(from_bibtex(e), known) is None]
     who, idhal = me(), cfg("BIB2HAL_IDHAL")
     shortlist, all_doms = dom.split_codes(cfg("BIB2HAL_DOMAINS")), dom.cached_domains()
     fallback = cfg("BIB2HAL_DOMAIN", "info")
@@ -82,6 +98,17 @@ def review_bib(text: str, no_crossref: bool = False, no_hal: bool = False, limit
     return rows
 
 
+def merge(old: list[dict], new: list[dict]) -> tuple[list[dict], dict]:
+    """Keep every reviewed row as it is; append the references that were not there yet."""
+    merged = list(old)
+    added = 0
+    for r in new:
+        if find_existing(r, merged) is None:
+            merged.append(r)
+            added += 1
+    return merged, {"kept": len(old), "added": added}
+
+
 def row_problems(r: dict, all_doms: list[dict] | None = None) -> list[str]:
     """Everything that would block the deposit of this row."""
     all_doms = dom.cached_domains() if all_doms is None else all_doms
@@ -112,6 +139,14 @@ def already_done(log: Path) -> set[str]:
         return set()
     with open(log, encoding="utf-8-sig", newline="") as f:
         return {r["key"] for r in csv.DictReader(f, delimiter=";") if r["target"] in DONE_TARGETS and r["ok"] == "True"}
+
+
+def last_attempts(log: Path) -> dict[str, dict]:
+    """Last check or submission per key (chronological log, last one wins)."""
+    out: dict[str, dict] = {}
+    for e in read_log(log):
+        out[e["key"]] = e
+    return out
 
 
 def read_log(log: Path) -> list[dict]:
@@ -152,6 +187,7 @@ def deposit(rows: list[dict], login: str, password: str, log: Path,
                      "title": r["title"][:120], "ok": res["ok"], "status": res["status"],
                      "hal_id": res["hal_id"], "message": (res.get("message") or "")[:500]}
             wr.writerow(entry)
+            entry = dict(entry, duplicate_of=res.get("duplicate_of", ""))
             f.flush()
             results.append(entry)
             if progress:

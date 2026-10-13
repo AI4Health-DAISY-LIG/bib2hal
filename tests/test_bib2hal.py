@@ -89,11 +89,14 @@ class TestPipeline(unittest.TestCase):
         self.dir = Path(self.tmp.name)
         self.env = mock.patch.dict(os.environ, {
             "BIB2HAL_ME": "Muller, Sandrine", "BIB2HAL_IDHAL": "sandrine-muller",
-            "BIB2HAL_STRUCTS": "1234", "BIB2HAL_STRUCTS_SINCE": "2021", "BIB2HAL_DOMAIN": "info"})
+            "BIB2HAL_STRUCTS": "1234", "BIB2HAL_DOMAIN": "info"})
         self.env.start()
         p1 = mock.patch("bib2hal.crossref.get_json", side_effect=fake_get_json)
         p2 = mock.patch("bib2hal.hal.get_json", side_effect=fake_get_json)
         p1.start(), p2.start()
+        # never use the HAL discipline list cached on this computer (tests must not depend on it)
+        mock.patch("bib2hal.domains.cached_domains", return_value=[]).start()
+        mock.patch("bib2hal.domains.load_domains", return_value=[]).start()
         self.addCleanup(mock.patch.stopall)
 
     def tearDown(self):
@@ -117,13 +120,12 @@ class TestPipeline(unittest.TestCase):
         self.assertEqual(conf["action"], "deposit")
         self.assertEqual((conf["hal_type"], conf["conf_city"], conf["conf_country"], conf["conf_date"]),
                          ("COMM", "Grenoble", "FR", "2023-06-12"))
-        self.assertEqual(conf["my_structs"], "1234")                          # >= STRUCTS_SINCE
-        self.assertEqual(conf["missing"], "")
-        self.assertEqual(rows["muller2020deep"]["my_structs"], "")            # 2020 < since
+        self.assertEqual(conf["my_structs"], "")                              # never pre-filled
+        self.assertEqual(conf["missing"], "my_structs")                       # the user picks the lab(s)
 
     def test_tei_conference(self):
         _, rows = self._review()
-        xml = build_tei(rows["muller2023kg"], idhal="sandrine-muller")
+        xml = build_tei(dict(rows["muller2023kg"], my_structs="1234"), idhal="sandrine-muller")
         root = ET.fromstring(xml)
         self.assertEqual(root.find(".//t:classCode[@scheme='halTypology']", NS).get("n"), "COMM")
         self.assertEqual(root.find(".//t:meeting/t:settlement", NS).text, "Grenoble")
@@ -149,6 +151,11 @@ class TestPipeline(unittest.TestCase):
 
     def test_deposit_idempotent(self):
         out, _ = self._review()
+        from bib2hal.review import read_csv, write_csv
+        rows = read_csv(out)
+        for r in rows:
+            r["my_structs"] = "1234"                                           # as picked in Review
+        write_csv(rows, out)
         calls = []
 
         def fake_sword(payload, is_zip, login, pwd, filename="meta.xml", test=False):

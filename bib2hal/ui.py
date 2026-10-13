@@ -24,14 +24,16 @@ from . import __version__
 from . import domains as dom
 from . import credentials as cred
 from . import pipeline as pl
-from .hal import HAL_TYPES, check_login, search_structures, sword_deposit
+from .bibtex import write_bibtex
+from .errors import explain
+from .hal import HAL_TYPES, check_login, search_structures, structure_names, sword_deposit
 from .review import ACTIONS, COLUMNS, check_reasons, missing_fields, read_csv, write_csv
 from .tei import build_tei
 from .util import CONFIG_KEYS, HttpError, cfg
 
 STATIC = Path(__file__).parent / "static"
 HIDDEN_KEYS = {"HAL_LOGIN", "HAL_PASSWORD"}     # never shown or saved: HAL credentials go through the sign-in panel
-MAX_UPLOAD = 20 * 1024 * 1024
+MAX_UPLOAD = 60 * 1024 * 1024          # BibTeX files and PDFs
 
 
 class App:
@@ -49,6 +51,7 @@ class App:
         self.job: dict = {"kind": "", "running": False, "i": 0, "n": 0, "lines": [], "error": "", "result": None}
         self.deposit_fn = deposit_fn or sword_deposit
         self.check_fn = check_fn or check_login
+        self.struct_names: dict[str, str] = {}
 
     def auth_state(self) -> dict:
         c = cred.get()
@@ -61,11 +64,17 @@ class App:
     def save_rows(self) -> None:
         write_csv(self.rows, self.review_path)
 
-    def row_view(self, i: int, r: dict, all_doms) -> dict:
+    def row_view(self, i: int, r: dict, all_doms, attempts: dict | None = None) -> dict:
         v = dict(r)
         v["id"] = i
         v["problems"] = pl.row_problems(r, all_doms) if r["action"] == "deposit" else []
         v["reasons"] = check_reasons(r, bool(cfg("BIB2HAL_ME")))
+        attempts = pl.last_attempts(self.log_path) if attempts is None else attempts
+        e = attempts.get(r["key"])
+        v["last_error"] = None
+        if e and e.get("ok") != "True":
+            v["last_error"] = {"date": e["date"], "what": "check" if e["target"].endswith("-test") else "submission",
+                               "status": e["status"], "message": e["message"], **explain(e["message"], e["status"])}
         return v
 
     def start_job(self, kind: str, fn) -> bool:
@@ -140,6 +149,8 @@ def make_handler(app: App):
             if method == "GET" and path in ("/", "/index.html"):
                 html = (STATIC / "index.html").read_text(encoding="utf-8").replace("__TOKEN__", app.token)
                 return self._send(200, html.encode("utf-8"), "text/html; charset=utf-8")
+            if method == "GET" and path.startswith("/static/"):
+                return self._static(path[len("/static/"):])
             if not path.startswith("/api/"):
                 return self._err("not found", 404)
             if not self._auth():
@@ -154,6 +165,23 @@ def make_handler(app: App):
                 return self._err(f"network: {e}", 502)
             except (ValueError, KeyError, IndexError) as e:
                 return self._err(str(e), 400)
+
+        STATIC_TYPES = {".woff2": "font/woff2", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon"}
+
+        def _static(self, rel: str):
+            """Bundled assets only (fonts, logo); no directory traversal, no HTML."""
+            target = (STATIC / rel).resolve()
+            ctype = self.STATIC_TYPES.get(target.suffix.lower())
+            if not ctype or STATIC.resolve() not in target.parents or not target.is_file():
+                return self._err("not found", 404)
+            self.send_response(200)
+            data = target.read_bytes()
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "max-age=86400")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self.wfile.write(data)
 
         def do_GET(self):  # noqa: N802
             self._route("GET")
@@ -172,6 +200,9 @@ def make_handler(app: App):
                 "review_file": app.review_path.name if app.review_path.exists() else "",
                 "n_rows": len(app.rows), "counts": counts, "actions": ACTIONS, "types": HAL_TYPES,
                 "columns": COLUMNS, "job": {k: v for k, v in app.job.items() if k != "result"},
+                "bib_files": [{"name": p.name, "size": p.stat().st_size,
+                               "modified": dt.datetime.fromtimestamp(p.stat().st_mtime).isoformat(timespec="minutes")}
+                              for p in sorted(app.workdir.glob("*.bib"), key=lambda p: -p.stat().st_mtime)],
             })
 
         def POST_config(self, q, path):
@@ -226,33 +257,103 @@ def make_handler(app: App):
 
         # ------------------------------------------------------------- API: import / review
         def POST_import(self, q, path):
-            raw = self._body()
-            if not raw.strip():
-                raise ValueError("empty file")
-            name = re.sub(r"[^\w.\-]", "_", Path(q.get("name") or "import.bib").name) or "import.bib"
-            if not name.lower().endswith(".bib"):
-                name += ".bib"
-            (app.workdir / name).write_bytes(raw)
+            """Analyse a BibTeX file: uploaded (body) or already in the working folder (?reuse=name.bib).
+
+            mode=merge (default when a review exists): references already reviewed are kept exactly as they are
+            (no new queries); only new ones are analysed and added. mode=replace: start a new review (backup kept).
+            """
+            reuse = q.get("reuse", "")
+            if reuse:
+                src = app.workdir / Path(reuse).name
+                if src.suffix.lower() != ".bib" or not src.is_file():
+                    raise ValueError(f"file not found: {reuse}")
+                raw, name = src.read_bytes(), src.name
+            else:
+                raw = self._body()
+                if not raw.strip():
+                    raise ValueError("empty file")
+                name = re.sub(r"[^\w.\-]", "_", Path(q.get("name") or "import.bib").name) or "import.bib"
+                if not name.lower().endswith(".bib"):
+                    name += ".bib"
+                (app.workdir / name).write_bytes(raw)
             text = raw.decode("utf-8", errors="replace")
             limit = int(q.get("limit") or 0)
             no_crossref, no_hal = q.get("no_crossref") == "1", q.get("no_hal") == "1"
+            mode = "replace" if q.get("mode") == "replace" or not app.rows else "merge"
 
             def job():
                 def prog(i, n, row):
                     app.progress(i, n, f"{row['action']:<9} {row['hal_type'] or '?':<9} {row['year'] or '----'}  "
                                        f"{row['title'][:90]}")
-                rows = pl.review_bib(text, no_crossref, no_hal, limit, progress=prog)
+                with app.lock:
+                    known = list(app.rows) if mode == "merge" else None
+                if known is not None:
+                    app.progress(0, 0, f"Keeping the {len(known)} references you already reviewed; "
+                                       "analysing only the new ones…")
+                rows = pl.review_bib(text, no_crossref, no_hal, limit, progress=prog, known=known)
                 with app.lock:
                     if app.review_path.exists():   # never lose a previous review: keep a dated copy
                         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
                         shutil.copy2(app.review_path, app.review_path.with_name(f"review-backup-{stamp}.csv"))
-                    app.rows = rows
+                    if mode == "merge":
+                        app.rows, stats = pl.merge(app.rows, rows)
+                    else:
+                        app.rows, stats = rows, {"kept": 0, "added": len(rows)}
                     app.save_rows()
-                return dict(Counter(r["action"] for r in rows))
+                app.progress(app.job["n"], app.job["n"], f"Done: {stats['added']} new reference(s) added, "
+                                                         f"{stats['kept']} kept as reviewed.")
+                return {"mode": mode, **stats, "counts": dict(Counter(r["action"] for r in app.rows))}
 
             if not app.start_job("review", job):
                 return self._err("another task is running", 409)
-            self._json({"ok": True, "saved_as": name})
+            self._json({"ok": True, "saved_as": name, "mode": mode})
+
+        def GET_export(self, q, path):
+            """The review as a BibTeX file (corrected metadata), to keep or reuse in a reference manager."""
+            with app.lock:
+                rows = [r for r in app.rows if r["action"] != "duplicate"]
+            body = write_bibtex(rows).encode("utf-8")
+            (app.workdir / "bib2hal-export.bib").write_bytes(body)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-bibtex; charset=utf-8")
+            self.send_header("Content-Disposition", 'attachment; filename="bib2hal-export.bib"')
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def POST_pdf(self, q, path):
+            """Attach (upload) or remove the full-text PDF of one reference; stored in the working folder."""
+            i = int(path.rstrip("/").split("/")[-1])
+            with app.lock:
+                r = app.rows[i]
+            if q.get("remove") == "1":
+                with app.lock:
+                    r["pdf"] = ""
+                    app.save_rows()
+                return self._json({"row": app.row_view(i, r, dom.cached_domains())})
+            data = self._body()
+            if not data.startswith(b"%PDF"):
+                raise ValueError("this file is not a PDF")
+            folder = app.workdir / "pdfs"
+            folder.mkdir(exist_ok=True)
+            target = folder / (re.sub(r"[^\w.\-]", "_", r["key"] or f"ref{i}") + ".pdf")
+            target.write_bytes(data)
+            with app.lock:
+                r["pdf"] = str(target)
+                app.save_rows()
+            self._json({"row": app.row_view(i, r, dom.cached_domains()), "name": q.get("name", target.name)})
+
+        def GET_structnames(self, q, path):
+            """Names for structure ids (from your saved labs first, then from HAL)."""
+            ids = [x for x in re.split(r"[;,\s]+", q.get("ids", "")) if x.isdigit()]
+            known = _saved_struct_names()
+            missing = [x for x in ids if x not in known and x not in app.struct_names]
+            if missing:
+                try:
+                    app.struct_names.update(structure_names(missing))
+                except HttpError:
+                    pass
+            self._json({"names": {x: known.get(x) or app.struct_names.get(x, "") for x in ids}})
 
         def GET_job(self, q, path):
             self._json(app.job)
@@ -260,7 +361,8 @@ def make_handler(app: App):
         def GET_rows(self, q, path):
             all_doms = dom.cached_domains()
             with app.lock:
-                rows = [app.row_view(i, r, all_doms) for i, r in enumerate(app.rows)]
+                attempts = pl.last_attempts(app.log_path)
+                rows = [app.row_view(i, r, all_doms, attempts) for i, r in enumerate(app.rows)]
             codes = set(dom.split_codes(cfg("BIB2HAL_DOMAINS")))
             for r in rows:
                 codes.update(dom.split_codes(r.get("domain", "")))
@@ -318,13 +420,18 @@ def make_handler(app: App):
                 ready, blocked = pl.split_ready(app.rows)
             done = pl.already_done(app.log_path)
             tested = {e["key"]: e for e in pl.read_log(app.log_path) if e["target"] == "hal-test"}
+            attempts = pl.last_attempts(app.log_path)
             self._json({
                 "ready": [{"key": r["key"], "title": r["title"], "year": r["year"], "hal_type": r["hal_type"],
                            "done": r["key"] in done,
+                           "error": _last_error(attempts.get(r["key"])),
                            "test": ({"ok": tested[r["key"]]["ok"] == "True", "message": tested[r["key"]]["message"]}
                                     if r["key"] in tested else None)}
                           for r in ready],
-                "blocked": [{"key": r["key"], "title": r["title"], "problems": p} for r, p in blocked],
+                "blocked": [{"key": r["key"], "title": r["title"], "problems": p,
+                             "error": _last_error(attempts.get(r["key"]))} for r, p in blocked],
+                "failed": [{"key": k, "title": e["title"], **_last_error(e)} for k, e in attempts.items()
+                           if e.get("ok") != "True" and k not in done],
                 "auth": app.auth_state(),
             })
 
@@ -352,6 +459,14 @@ def make_handler(app: App):
                                        f"{e['hal_id']:<20} {e['title'][:70]}"
                                        + ("" if e["ok"] else f"  — {e['message'][:200]}"))
                 res = pl.deposit(todo, login, pwd, app.log_path, progress=prog, deposit_fn=app.deposit_fn, test=test)
+                dups = {e["key"]: e["duplicate_of"] for e in res if e.get("duplicate_of")}
+                if dups:                                  # HAL already has them: switch to 'attach'
+                    with app.lock:
+                        for r in app.rows:
+                            if r["key"] in dups:
+                                r.update(action="attach", hal_status="in_hal_not_linked", hal_id=dups[r["key"]],
+                                         hal_url=f"https://hal.science/{dups[r['key']]}")
+                        app.save_rows()
                 if not res:
                     app.progress(0, 0, "Nothing new to send (already in HAL).")
                 return {"ok": sum(1 for e in res if e["ok"]), "errors": sum(1 for e in res if not e["ok"])}
@@ -364,6 +479,23 @@ def make_handler(app: App):
             self._json({"log": pl.read_log(app.log_path)[::-1]})
 
     return Handler
+
+
+def _last_error(e: dict | None) -> dict | None:
+    if not e or e.get("ok") == "True":
+        return None
+    return {"what": "check" if e["target"].endswith("-test") else "submission", "status": e["status"],
+            "message": e["message"], **explain(e["message"], e["status"])}
+
+
+def _saved_struct_names() -> dict[str, str]:
+    """BIB2HAL_STRUCT_NAMES='123:LIG — Laboratoire…|456:UGA — …' -> {id: name}."""
+    out = {}
+    for part in cfg("BIB2HAL_STRUCT_NAMES").split("|"):
+        sid, _, name = part.partition(":")
+        if sid.strip().isdigit():
+            out[sid.strip()] = name.strip()
+    return out
 
 
 def _drop_env_keys(env: Path, keys) -> None:

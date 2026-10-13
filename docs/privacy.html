@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your data — bib2hal</title>
+<meta name="description" content="What bib2hal does with your data: everything stays on your computer; only titles and DOIs are sent to Crossref and HAL; your HAL password is never written to a file.">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="privacy">
+<header id="site-header"></header>
+
+<main class="wrap">
+  <div class="page-head">
+    <div class="eyebrow">Data protection</div>
+    <h1>Your data stays with you</h1>
+    <p class="lead">bib2hal is a program that runs on your own computer. There is no bib2hal server and no account:
+      the authors of the tool never receive your data.</p>
+  </div>
+
+  <h2>What is stored, and where</h2>
+  <table>
+    <tr><th>Data</th><th>Where</th><th>Who can see it</th></tr>
+    <tr><td>Your settings (name, IdHAL, lab, disciplines)</td><td><code>.env</code> file in your bib2hal folder (<code>Documents/bib2hal</code>)</td><td>You</td></tr>
+    <tr><td>Your publication list and review (<code>.bib</code>, <code>review.csv</code>, backups)</td><td>Your bib2hal folder</td><td>You</td></tr>
+    <tr><td>History of what was submitted (<code>deposit_log.csv</code>)</td><td>Your bib2hal folder</td><td>You</td></tr>
+    <tr><td>Your HAL login and password</td><td>In memory while bib2hal runs, or — only if you tick <i>Remember me</i> — in your operating
+      system's keychain (Windows Credential Manager, macOS Keychain, Linux Secret Service). <b>Never in a file.</b></td><td>You</td></tr>
+    <tr><td>The list of HAL disciplines (public)</td><td>A cache in your user folder (<code>.bib2hal</code>)</td><td>—</td></tr>
+  </table>
+  <p>To delete everything: sign out in bib2hal (this also removes the keychain entry), then delete your <code>bib2hal</code> folder.</p>
+
+  <h2>What leaves your computer</h2>
+  <p>bib2hal connects only to the public services needed for the job, and only when you ask it to:</p>
+  <table>
+    <tr><th>Service</th><th>When</th><th>What is sent</th></tr>
+    <tr><td><b>Crossref</b> (api.crossref.org)</td><td>Import</td><td>Title, first author and DOI of each reference, to find its complete metadata.
+      Optionally, the contact e-mail you enter in Settings (Crossref recommends it).</td></tr>
+    <tr><td><b>HAL</b> search &amp; referential APIs (api.archives-ouvertes.fr)</td><td>Import, settings</td><td>Titles and DOIs (to check what is
+      already in HAL), the words you type to search for a lab or a discipline.</td></tr>
+    <tr><td><b>HAL</b> deposit API (SWORD)</td><td>Sign-in, Check, Submit</td><td>Your HAL login and password (over HTTPS, as HAL requires),
+      and the records you choose to check or submit.</td></tr>
+  </table>
+  <p>No analytics, no tracking, no advertising, no data sent to the authors of bib2hal or to any other party.
+    Each of these services applies its own privacy policy to the requests it receives.</p>
+
+  <h2>The interface in your browser</h2>
+  <ul class="check">
+    <li>The interface is served by bib2hal itself, on your computer only (<code>127.0.0.1</code>): it cannot be reached from the network.</li>
+    <li>Each session uses a random code, so other websites open in your browser cannot control bib2hal.</li>
+    <li>Fonts and images are included in the application: the page loads nothing from third-party servers.</li>
+  </ul>
+
+  <h2>GDPR</h2>
+  <p>Because bib2hal runs on your computer and its authors receive no data, using it does not involve any processing of personal data by
+    the authors of the tool. The information you submit to HAL is then processed by HAL (CCSD) under
+    <a href="https://hal.science">HAL's own terms and privacy policy</a>, exactly as if you had used HAL's website.</p>
+  <p>This documentation website is hosted by GitHub Pages; GitHub records technical information (such as IP addresses) as described in
+    its privacy statement. The download page asks GitHub's public API for the list of releases.</p>
+
+  <h2>Open source</h2>
+  <p>The full source code is public under the MIT licence: anyone can verify what bib2hal does.
+    <a href="https://github.com/AI4Health-DAISY-LIG/bib2hal">github.com/AI4Health-DAISY-LIG/bib2hal</a></p>
+</main>
+
+<footer id="site-footer"></footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

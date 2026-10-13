@@ -24,4 +24,4 @@ bib2hal = "bib2hal.cli:main"
 packages = ["bib2hal"]
 
 [tool.setuptools.package-data]
-bib2hal = ["static/*"]
+bib2hal = ["static/*", "static/fonts/*"]

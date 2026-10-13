@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from pathlib import Path
 
 from .hal import HAL_TYPES
@@ -13,7 +14,7 @@ COLUMNS = [
     "authors", "me_position", "my_structs", "domain", "language", "audience", "peer_reviewed",
     "proceedings", "invited", "conf_name", "conf_city", "conf_country", "conf_date", "volume", "issue",
     "pages", "publisher", "issn", "isbn", "institution", "pdf", "licence", "abstract", "key", "bib_type",
-    "crossref_type", "match", "url", "author_orcids", "validated",
+    "crossref_type", "match", "url", "author_orcids", "validated", "supervisor",
 ]
 
 ACTIONS = {
@@ -32,8 +33,8 @@ REQUIRED = {
     "COUV": ["venue"],
     "OUV": ["publisher"],
     "DOUV": ["publisher"],
-    "THESE": ["institution"],
-    "HDR": ["institution"],
+    "THESE": ["institution", "supervisor"],
+    "HDR": ["institution", "supervisor"],
     "MEM": ["institution"],
     "REPORT": ["institution"],
 }
@@ -54,9 +55,29 @@ def authors_from_str(s: str) -> list[dict]:
     return out
 
 
+_GROUP = re.compile(r"\b(consortium|collaboration|group|groupe|network|initiative|alliance|team|project|study|"
+                    r"investigators|committee|society|association|program(me)?|working)\b", re.I)
+
+
+def is_group(name: str) -> bool:
+    """A collective author ('The Biomedical Data Translator Consortium'), not a person."""
+    return bool(_GROUP.search(name or ""))
+
+
+def author_problems(row: dict) -> list[str]:
+    """People without a given name (HAL requires one). Collective authors are fine: they are left out of the
+    HAL author list (HAL records people only; add the consortium in HAL's 'collaboration' field if you wish)."""
+    out = []
+    for a in authors_from_str(row.get("authors", "")):
+        if not a["given"] and not is_group(a["family"]):
+            out.append(f"authors: '{a['family']}' has no given name")
+    return out
+
+
 def missing_fields(row: dict) -> list[str]:
     t = row.get("hal_type", "")
     miss = [f for f in REQUIRED["*"] + REQUIRED.get(t, []) if not (row.get(f) or "").strip()]
+    miss += author_problems(row)
     if t and t not in HAL_TYPES:
         miss.append(f"hal_type '{t}' unknown")
     return miss

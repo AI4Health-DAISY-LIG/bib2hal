@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Download bib2hal</title>
+<meta name="description" content="Download bib2hal for Windows, macOS or Linux. No installation needed.">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="download">
+<header id="site-header"></header>
+
+<main class="wrap">
+  <div class="page-head">
+    <div class="eyebrow">Download</div>
+    <h1>Download bib2hal</h1>
+    <p class="lead">One file, nothing to install. Double-click it: the interface opens in your web browser.</p>
+    <p class="release-meta" id="latest-meta">Looking for the latest version…</p>
+  </div>
+
+  <div class="dl" id="downloads">
+    <a class="os" href="https://github.com/AI4Health-DAISY-LIG/bib2hal/releases/latest"><b>Loading…</b><span>or open the releases page on GitHub</span></a>
+  </div>
+  <p class="release-meta" id="checksums"></p>
+
+  <h2 id="first-launch">First launch</h2>
+  <p>bib2hal is not yet signed by Microsoft or Apple, so your system asks for confirmation the first time.</p>
+  <div class="grid">
+    <div class="card"><h3>Windows</h3>
+      <p>"Windows protected your PC" → click <b>More info</b> → <b>Run anyway</b>.</p></div>
+    <div class="card"><h3>macOS</h3>
+      <p>Unzip the file. "Cannot be opened because the developer cannot be verified": <b>right-click</b> the file → <b>Open</b> → <b>Open</b>.
+        Only needed once.</p></div>
+    <div class="card"><h3>Linux</h3>
+      <p>Unzip, then run <code>./bib2hal-linux-x64</code> from a terminal (or make it executable and double-click it).</p></div>
+  </div>
+  <p>A small window stays open while bib2hal runs — closing it stops bib2hal. Your files are kept in <code>Documents/bib2hal</code>.
+    Then follow the <a href="how-to.html">guide</a>.</p>
+
+  <div id="older"></div>
+
+  <h2>For Python users</h2>
+  <p>If you have Python 3.9 or later, you can also install it as a command:</p>
+<pre><code>pip install git+https://github.com/AI4Health-DAISY-LIG/bib2hal.git
+bib2hal ui</code></pre>
+  <p class="caption">Optional: <code>pip install keyring</code> for "Remember me" on every system.</p>
+</main>
+
+<footer id="site-footer"></footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

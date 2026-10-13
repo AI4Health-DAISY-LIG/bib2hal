@@ -19,8 +19,8 @@ from . import __version__
 CONFIG_KEYS = {
     "BIB2HAL_ME": "Your name as it appears in references, 'Family, Given' (e.g. 'Muller, Sandrine').",
     "BIB2HAL_IDHAL": "Your IdHAL string (e.g. 'sandrine-muller'). Used to tell linked/unlinked HAL records apart.",
-    "BIB2HAL_STRUCTS": "Default HAL structure ids for YOUR affiliation, ';'-separated (find them with `bib2hal struct`).",
-    "BIB2HAL_STRUCTS_SINCE": "Only pre-fill BIB2HAL_STRUCTS for works published this year or later.",
+    "BIB2HAL_STRUCTS": "Your labs (HAL structure ids, ';'-separated), offered for each paper; never filled in automatically.",
+    "BIB2HAL_STRUCT_NAMES": "Names of your saved labs (written by the web interface).",
     "BIB2HAL_DOMAINS": "Your shortlist of HAL disciplines, ';'-separated (set it with `bib2hal domains --pick`).",
     "BIB2HAL_DOMAIN": "Fallback HAL domain when no shortlist is set. Default: info.",
     "BIB2HAL_MAILTO": "Contact e-mail sent to Crossref (optional, gives faster 'polite' access).",

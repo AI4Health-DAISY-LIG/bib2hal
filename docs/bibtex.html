@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get your .bib file — bib2hal</title>
+<meta name="description" content="How to export your publication list as a BibTeX (.bib) file from Google Scholar, Zotero, Mendeley, EndNote or ORCID, to import it in bib2hal.">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="bibtex">
+<header id="site-header"></header>
+
+<main class="wrap">
+  <div class="page-head">
+    <div class="eyebrow">Guide</div>
+    <h1>Get your publication list as a .bib file</h1>
+    <p class="lead">bib2hal reads BibTeX, the format every reference manager can export. Use the tool where your list is the most
+      complete — for many researchers, that is their Google Scholar profile.</p>
+  </div>
+
+  <div class="note">You only need <b>your own publications</b>. If your library also contains papers by others, export just the
+    folder or collection with your work, or select your papers before exporting. bib2hal will in any case flag references where it
+    cannot find you among the authors.</div>
+
+  <div data-tabs>
+    <div class="tabs">
+      <button data-tab="scholar">Google Scholar</button>
+      <button data-tab="zotero">Zotero</button>
+      <button data-tab="mendeley">Mendeley</button>
+      <button data-tab="endnote">EndNote</button>
+      <button data-tab="orcid">ORCID &amp; others</button>
+    </div>
+
+    <section class="panel" id="scholar">
+      <h2>From your Google Scholar profile</h2>
+      <ol class="steps">
+        <li>Open <a href="https://scholar.google.com/citations">scholar.google.com</a> and go to <b>My profile</b>.</li>
+        <li>Scroll to the bottom of your list and click <b>Show more</b> until all your publications are displayed.</li>
+        <li>Tick the <b>checkbox at the top of the list</b> (next to "Title") to select every article shown.</li>
+        <li>Click <b>Export</b> and choose <b>BibTeX</b>.</li>
+        <li>Depending on your browser, a file is downloaded, or the BibTeX text opens in a new tab: in that case save the page
+          (<kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>⌘</kbd>+<kbd>S</kbd>) as <code>scholar.bib</code>.</li>
+      </ol>
+      <p class="caption">Google Scholar exports are often incomplete (no DOI, approximate document types). That is expected:
+        bib2hal completes them from Crossref and asks you about the doubtful ones.</p>
+    </section>
+
+    <section class="panel" id="zotero">
+      <h2>From Zotero</h2>
+      <ol class="steps">
+        <li>In the left pane, select the collection that contains your publications (or <b>My Library</b>).</li>
+        <li><b>Right-click</b> the collection → <b>Export Collection…</b> — or, for the whole library, menu <b>File → Export Library…</b>.
+          To export only some items, select them, right-click → <b>Export Items…</b>.</li>
+        <li>Format: <b>BibTeX</b>. You can leave "Export Notes" and "Export Files" unticked.</li>
+        <li>Click <b>OK</b> and save the file, e.g. <code>zotero.bib</code>.</li>
+      </ol>
+      <p class="caption">If you use the <i>Better BibTeX</i> plug-in, its format works too.</p>
+    </section>
+
+    <section class="panel" id="mendeley">
+      <h2>From Mendeley Reference Manager</h2>
+      <ol class="steps">
+        <li>Open the collection with your publications and select them (<kbd>Ctrl</kbd>+<kbd>A</kbd> / <kbd>⌘</kbd>+<kbd>A</kbd> selects all).</li>
+        <li>Choose <b>Export</b> in the panel that appears for the selection.</li>
+        <li>Select <b>BibTeX (.bib)</b> as the format and save the file.</li>
+      </ol>
+      <p class="caption">With the older Mendeley Desktop: menu <b>File → Export…</b>, file type <b>BibTeX (*.bib)</b>.</p>
+    </section>
+
+    <section class="panel" id="endnote">
+      <h2>From EndNote</h2>
+      <p>EndNote does not have a ".bib" option, but its <b>BibTeX Export</b> output style produces exactly that.</p>
+      <ol class="steps">
+        <li>Select your references (or a group containing them).</li>
+        <li>Menu <b>File → Export…</b>.</li>
+        <li>File type: <b>Text File</b>. Output style: <b>BibTeX Export</b> — if it is not in the list, choose
+          <b>Select Another Style…</b> and look for it there.</li>
+        <li>Name the file with the <code>.bib</code> extension, e.g. <code>endnote.bib</code>, and click <b>Save</b>.
+          If EndNote adds <code>.txt</code>, simply rename the file to end in <code>.bib</code>.</li>
+      </ol>
+    </section>
+
+    <section class="panel" id="orcid">
+      <h2>From ORCID, HAL or other sources</h2>
+      <ul>
+        <li><b>ORCID</b> — the Works section of your ORCID record can be exported as BibTeX. Your ORCID is usually less complete than
+          Google Scholar, unless you maintain it carefully.</li>
+        <li><b>Publishers, Web of Science, Scopus, PubMed</b> — all offer a BibTeX export ("Cite" or "Export" button). You can combine
+          several files: open them in a text editor and paste them one after the other into a single <code>.bib</code> file.
+          bib2hal detects duplicates.</li>
+        <li><b>By hand</b> — a <code>.bib</code> file is plain text. One entry looks like:
+<pre><code>@article{muller2024,
+  title   = {Title of the paper},
+  author  = {Muller, Sandrine and Doe, Jane},
+  journal = {NeuroImage},
+  year    = {2024},
+  doi     = {10.1016/j.neuroimage.2024.000000}
+}</code></pre></li>
+      </ul>
+    </section>
+  </div>
+
+  <h2>Then</h2>
+  <p>Open bib2hal, go to <b>Import</b> and choose your file. <a href="how-to.html">Full guide →</a></p>
+  <p class="caption">Menu names can vary slightly between versions of these tools.</p>
+</main>
+
+<footer id="site-footer"></footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

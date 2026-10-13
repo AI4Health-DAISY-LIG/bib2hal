@@ -90,6 +90,21 @@ def search_structures(query: str, rows: int = 25) -> list[dict]:
     return d.get("response", {}).get("docs", [])
 
 
+def structure_names(ids: list[str]) -> dict[str, str]:
+    """docid -> 'ACRONYM — Name' for HAL structures (one request for all ids)."""
+    ids = [i for i in ids if str(i).isdigit()]
+    if not ids:
+        return {}
+    d = get_json(REF_STRUCT, {"q": "docid:(" + " OR ".join(ids) + ")", "fl": "docid,acronym_s,name_s,valid_s",
+                              "rows": len(ids), "wt": "json"}) or {}
+    out = {}
+    for x in d.get("response", {}).get("docs", []):
+        name = x.get("name_s", "")
+        out[str(x.get("docid"))] = (f"{x['acronym_s']} — {name}" if x.get("acronym_s") else name) + \
+            ("" if x.get("valid_s") in ("VALID", None) else f" ({x['valid_s'].lower()})")
+    return out
+
+
 def _basic(login: str, password: str) -> str:
     return "Basic " + base64.b64encode(f"{login}:{password}".encode()).decode()
 
@@ -139,4 +154,10 @@ def sword_deposit(payload: bytes, is_zip: bool, login: str, password: str,
                 msg += el.text.strip() + " "
     except ET.ParseError:
         msg = body[:500]
-    return {"ok": 200 <= status < 300, "status": status, "hal_id": hal_id, "message": msg.strip(), "raw": body}
+    duplicate_of = ""
+    m = re.search(r'"duplicate-entry"\s*:\s*\{\s*"([a-z]+-\d+)"', body or "")
+    if m:
+        duplicate_of = m.group(1)
+        msg = f"Already in HAL as {duplicate_of} (same DOI or title): nothing deposited. Link it to your IdHAL in HAL."
+    return {"ok": 200 <= status < 300, "status": status, "hal_id": hal_id, "message": msg.strip(), "raw": body,
+            "duplicate_of": duplicate_of}

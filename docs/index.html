@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bib2hal — put your publications in HAL, safely</title>
+<meta name="description" content="bib2hal brings your publication list (Google Scholar, Zotero, Mendeley, EndNote) into HAL, with a review step, on your own computer. Made by AI4Health @ DAISY (LIG, Université Grenoble Alpes).">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="home">
+<header id="site-header"></header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Open science · HAL</div>
+    <h1>Your whole publication list in HAL,<br>in an afternoon — not a week.</h1>
+    <p class="lead">bib2hal takes the publication list you already maintain (Google Scholar, Zotero, Mendeley, EndNote),
+      finds what is missing from HAL, lets you check everything paper by paper, and submits it under your own HAL account.
+      It runs entirely on your computer.</p>
+    <div class="actions">
+      <a class="btn p" href="download.html">Download bib2hal</a>
+      <a class="btn" href="how-to.html">See how it works</a>
+    </div>
+    <div class="hero-shot"><img src="assets/screens/review.png" alt="The bib2hal review screen: a list of references on the left, the selected reference on the right with its type, disciplines and authors."></div>
+  </div>
+</section>
+
+<main class="wrap">
+  <h2>Why this tool?</h2>
+  <p class="lead">HAL is the national open archive used by French research institutions. Your HAL record is what your
+    laboratory, your university and evaluation committees look at — but most of us keep our list up to date somewhere else.</p>
+  <div class="grid">
+    <div class="card"><div class="ic">1</div><h3>HAL is where you are counted</h3>
+      <p>Laboratory reports, institutional open-science indicators and individual evaluation files increasingly rely on
+        HAL. A publication that is not in HAL, or not linked to your IdHAL, is easily missed.</p></div>
+    <div class="card"><div class="ic">2</div><h3>Depositing one by one is slow</h3>
+      <p>HAL's web form handles one paper at a time. With tens of papers to catch up, the backlog never gets done.
+        bib2hal handles the whole list in one pass and only asks you about what needs a decision.</p></div>
+    <div class="card"><div class="ic">3</div><h3>No duplicates, no surprises</h3>
+      <p>Before anything is sent, bib2hal looks every reference up in HAL, spots duplicates and possible homonyms,
+        completes the metadata from Crossref, and lets HAL validate each record without creating it.</p></div>
+  </div>
+
+  <h2>What it does</h2>
+  <ul class="check">
+    <li><b>Imports</b> a BibTeX file exported from Google Scholar, Zotero, Mendeley, EndNote or ORCID — <a href="bibtex.html">how to get one</a>.</li>
+    <li><b>Completes</b> each reference from Crossref (DOI, authors, journal, conference place and date).</li>
+    <li><b>Checks HAL</b>: already deposited and linked to you, deposited but not linked to your IdHAL, or missing.</li>
+    <li><b>Lets you review</b> paper by paper — type, disciplines, affiliation at the time of the work — with what is missing in red and what to double-check in amber.</li>
+    <li><b>Submits</b> to HAL under your own account, after a "Check with HAL" that creates nothing. HAL moderators still review every record.</li>
+  </ul>
+</main>
+
+<section class="band">
+  <div class="wrap">
+    <h2>Your data stays with you</h2>
+    <div class="grid">
+      <div class="card"><h3>Runs on your computer</h3><p>There is no bib2hal server. Your files are kept in a folder on your computer
+        (<code>Documents/bib2hal</code>). Nothing is collected by the authors of the tool.</p></div>
+      <div class="card"><h3>Your HAL password is never written to a file</h3><p>It is checked with HAL when you sign in, then kept in
+        memory or — if you choose — in your operating system's keychain.</p></div>
+      <div class="card"><h3>Only public services, only what is needed</h3><p>bib2hal only talks to Crossref and HAL, and only sends
+        titles and DOIs to look references up. No tracking, no analytics.</p></div>
+    </div>
+    <p style="margin-top:18px"><a href="privacy.html">Read the full data-protection notice →</a></p>
+  </div>
+</section>
+
+<main class="wrap">
+  <h2>Three steps</h2>
+  <div class="grid">
+    <div class="card"><div class="ic">1</div><h3>Export your list</h3><p>From Google Scholar, Zotero, Mendeley or EndNote, as a <code>.bib</code> file. <a href="bibtex.html">Guide →</a></p></div>
+    <div class="card"><div class="ic">2</div><h3>Review in bib2hal</h3><p>Double-click the application, set up once, import, review. <a href="how-to.html">Guide →</a></p></div>
+    <div class="card"><div class="ic">3</div><h3>Submit to HAL</h3><p>Check with HAL, submit, follow moderation in your HAL account.</p></div>
+  </div>
+  <p style="margin-top:28px"><a class="btn p" href="download.html">Download for Windows, macOS or Linux</a></p>
+</main>
+
+<footer id="site-footer"></footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

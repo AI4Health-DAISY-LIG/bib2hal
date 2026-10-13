@@ -325,7 +325,17 @@ def cmd_config(_a) -> int:
     return 0
 
 
+def _safe_console() -> None:
+    """Never crash on accents/dashes when the console is not UTF-8 (Windows, redirected output)."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _safe_console()
     load_env(".env")
     p = argparse.ArgumentParser(prog="bib2hal", description="Bring a BibTeX publication list into HAL, with review.")
     p.add_argument("--version", action="version", version=f"bib2hal {__version__}")

@@ -137,3 +137,36 @@ def split_authors(field: str) -> list[dict]:
             fam, giv = (bits[-1], " ".join(bits[:-1])) if len(bits) > 1 else (name, "")
         out.append({"family": fam.strip(), "given": giv.strip()})
     return out
+
+
+_BIB_TYPES = {"ART": "article", "COMM": "inproceedings", "POSTER": "inproceedings", "COUV": "incollection",
+              "OUV": "book", "DOUV": "book", "THESE": "phdthesis", "HDR": "phdthesis", "MEM": "mastersthesis",
+              "REPORT": "techreport", "UNDEFINED": "misc", "OTHER": "misc"}
+
+
+def _bib_escape(v: str) -> str:
+    v = (v or "").replace("{", "").replace("}", "")      # values are already plain Unicode text
+    return re.sub(r"(?<!\\)([&%#])", r"\\\1", v)
+
+
+def write_bibtex(rows: list[dict]) -> str:
+    """Reviewed rows -> BibTeX text (corrected metadata, DOIs found, your decisions kept as a note)."""
+    out = []
+    for r in rows:
+        t = r.get("hal_type") or ""
+        etype = _BIB_TYPES.get(t, r.get("bib_type") or "misc")
+        authors = " and ".join(a.strip() for a in (r.get("authors") or "").split(";") if a.strip())
+        venue_field = {"article": "journal", "inproceedings": "booktitle", "incollection": "booktitle",
+                       "misc": "howpublished"}.get(etype, "")
+        fields = [("title", r.get("title")), ("author", authors), ("year", r.get("year")),
+                  (venue_field, r.get("venue") if venue_field else ""), ("volume", r.get("volume")),
+                  ("number", r.get("issue")), ("pages", r.get("pages")), ("publisher", r.get("publisher")),
+                  ("school" if etype in ("phdthesis", "mastersthesis") else "institution",
+                   r.get("institution") if etype in ("phdthesis", "mastersthesis", "techreport") else ""),
+                  ("address", ", ".join(x for x in (r.get("conf_city"), r.get("conf_country")) if x)),
+                  ("doi", r.get("doi")), ("issn", r.get("issn")), ("isbn", r.get("isbn")),
+                  ("abstract", r.get("abstract")),
+                  ("note", f"bib2hal: {r.get('action', '')}" + (f", HAL {r['hal_id']}" if r.get("hal_id") else ""))]
+        body = ",\n".join(f"  {k} = {{{_bib_escape(str(v))}}}" for k, v in fields if k and v)
+        out.append(f"@{etype}{{{r.get('key') or 'ref'},\n{body}\n}}")
+    return "% Exported by bib2hal (reviewed and completed references)\n\n" + "\n\n".join(out) + "\n"

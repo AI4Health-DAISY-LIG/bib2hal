@@ -3,6 +3,8 @@
 Bring your publication list into [HAL](https://hal.science) from a BibTeX file (Google Scholar, Zotero, ORCID, publishers…),
 **with a review step before anything is submitted**.
 
+📖 **User guide and downloads: https://ai4health-daisy-lig.github.io/bib2hal/**
+
 ```
 scholar.bib ──► Import ──► Review ──► Check with HAL ──► Submit to HAL ──► HAL moderation ──► public record
                 Crossref    you decide   (creates nothing)   (your account)
@@ -20,7 +22,28 @@ scholar.bib ──► Import ──► Review ──► Check with HAL ──►
 > Status: early version. The record format sent to HAL has been written from HAL's documentation; use
 > **Check with HAL** on a couple of references first and report any error message in the issues.
 
-## Install
+## Download (no installation)
+
+Get the file for your system from the **[latest release](https://github.com/AI4Health-DAISY-LIG/bib2hal/releases/latest)**:
+
+| System | File |
+|---|---|
+| Windows 10/11 | `bib2hal-windows-x64.exe` |
+| macOS, Apple Silicon (M1 and later) | `bib2hal-macos-arm64.zip` |
+| Linux | `bib2hal-linux-x64.zip` |
+
+Double-click it: a small window opens (keep it open while you work — closing it stops bib2hal) and the interface
+appears in your browser. Your settings and review files are kept in **Documents/bib2hal**.
+
+The application is not signed by Microsoft or Apple yet, so the first launch shows a warning:
+- **Windows** — "Windows protected your PC": click *More info* → *Run anyway*.
+- **macOS** — "cannot be opened because the developer cannot be verified": unzip, then *right-click* the file →
+  *Open* → *Open* (only the first time).
+- **Linux** — unzip, then run `./bib2hal-linux-x64`.
+
+You can check a download against `SHA256SUMS.txt`, published with each release.
+
+## Install with Python (alternative)
 
 ```bash
 git clone https://github.com/AI4Health-DAISY-LIG/bib2hal.git
@@ -69,8 +92,7 @@ The web interface writes them for you. By hand, create a `.env` in your working 
 ```ini
 BIB2HAL_ME=Muller, Sandrine           # your name as in references: Family, Given
 BIB2HAL_IDHAL=sandrine-muller         # your IdHAL (to spot records not yet linked to you)
-BIB2HAL_STRUCTS=12345                 # HAL structure id(s) of your current lab, ';'-separated
-BIB2HAL_STRUCTS_SINCE=2022            # ...only pre-filled for works from this year on
+BIB2HAL_STRUCTS=12345;67890           # your labs (HAL structure ids), offered for each paper — never filled in automatically
 BIB2HAL_DOMAINS=info.info-ai;sdv.neu  # your HAL disciplines
 BIB2HAL_MAILTO=you@univ.fr            # optional, polite Crossref access
 ```
@@ -93,6 +115,22 @@ stops) or in your OS keychain if you tick *Remember me*. *Sign out* removes them
 bib2hal is a local tool. It stores nothing outside your working folder and your OS keychain, and sends no telemetry.
 Network traffic: Crossref API (titles, first author, DOIs), HAL search and referential APIs (titles, DOIs),
 HAL deposit API (your submissions, with your own account). Each service's own privacy policy applies.
+
+## Releasing a new version (maintainers)
+
+1. Update `__version__` in `bib2hal/__init__.py` (and `version` in `pyproject.toml`), commit and push.
+2. Tag and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
+3. GitHub Actions (`.github/workflows/release.yml`) runs the tests, builds the three executables with PyInstaller
+   (`packaging/bib2hal.spec`) on Windows, macOS and Linux, and publishes them in a GitHub Release with checksums.
+
+4. The same run then re-publishes the documentation website (`docs/`, workflow `.github/workflows/pages.yml`) on
+   GitHub Pages. It is also re-published whenever `docs/` changes on `main`.
+
+`.github/workflows/ci.yml` runs the tests on the three systems at every push and pull request.
+
+One-time GitHub settings for the website: **Settings → Pages → Source: GitHub Actions**, and
+**Settings → Environments → github-pages → Deployment branches and tags**: add the tag rule `v*`
+(otherwise the deployment triggered by a release tag is refused).
 
 ## Development
 

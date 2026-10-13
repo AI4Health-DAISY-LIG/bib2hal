@@ -98,6 +98,11 @@ class TestUI(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as cm:
             urllib.request.urlopen(req)
         self.assertEqual(cm.exception.code, 403)
+        with urllib.request.urlopen(self.url + "static/fonts/dm-sans-latin-var.woff2") as r:   # bundled assets
+            self.assertEqual(r.headers["Content-Type"], "font/woff2")
+        for bad in ("static/../ui.py", "static/index.html", "static/%2e%2e/ui.py"):
+            with self.assertRaises(urllib.error.HTTPError):
+                urllib.request.urlopen(self.url + bad)
 
     def test_full_pipeline(self):
         # 1. settings: HAL credentials can no longer be set through the settings form
@@ -149,7 +154,9 @@ class TestUI(unittest.TestCase):
         rows = {r["key"]: r for r in d["rows"]}
         conf = rows["muller2023kg"]
         self.assertEqual(conf["action"], "deposit")
-        self.assertEqual(conf["problems"], [])
+        self.assertEqual(conf["problems"], ["my_structs"])                    # affiliation is picked by the user
+        _, d2 = self.call(f"/api/rows/{conf['id']}", {"my_structs": "1234"})
+        self.assertEqual(d2["row"]["problems"], [])
         self.assertIn("sdv.neu", d["labels"])
 
         # 3b. why 'check' rows need checking
@@ -208,6 +215,89 @@ class TestUI(unittest.TestCase):
         self.call("/api/import?name=scholar.bib", raw=(HERE / "sample.bib").read_bytes())
         self.wait_job()
         self.assertEqual(len(list(self.dir.glob("review-backup-*.csv"))), 1)
+
+    def _import(self, **q):
+        qs = "&".join(f"{k}={v}" for k, v in q.items())
+        raw = b"" if "reuse" in q else (HERE / "sample.bib").read_bytes()
+        code, d = self.call("/api/import?" + qs, raw=raw)
+        self.assertEqual(code, 200, d)
+        j = self.wait_job()
+        self.assertEqual(j["error"], "")
+        return {r["key"]: r for r in self.call("/api/rows")[1]["rows"]}
+
+    def test_reimport_keeps_review_and_skips_known(self):
+        rows = self._import(name="scholar.bib")
+        conf = rows["muller2023kg"]
+        self.call(f"/api/rows/{conf['id']}", {"title": "My corrected title", "my_structs": "1234", "validated": "yes"})
+        # the user adds a paper to the .bib, then re-analyses the file already in the folder
+        bib = (self.dir / "scholar.bib").read_text(encoding="utf-8") + (
+            "\n@article{new2025,\n title={A brand new paper},\n author={Muller, Sandrine},\n journal={J},\n year={2025}\n}\n")
+        (self.dir / "scholar.bib").write_text(bib, encoding="utf-8")
+        import bib2hal.hal as halmod
+        with mock.patch("bib2hal.pipeline.find", wraps=halmod.find) as f:
+            _, st = self.call("/api/state")
+            self.assertEqual(st["bib_files"][0]["name"], "scholar.bib")
+            rows2 = self._import(reuse="scholar.bib")
+            self.assertEqual(f.call_count, 1)                       # only the new reference was looked up
+        self.assertEqual(len(rows2), 7)
+        self.assertEqual(rows2["muller2023kg"]["title"], "My corrected title")   # edits kept
+        self.assertEqual(rows2["muller2023kg"]["validated"], "yes")
+        self.assertIn("new2025", rows2)
+        rows3 = self._import(reuse="scholar.bib", mode="replace")    # replace mode starts over
+        self.assertNotEqual(rows3["muller2023kg"]["title"], "My corrected title")
+
+    def test_export_bib(self):
+        self._import(name="scholar.bib")
+        req = urllib.request.Request(self.url + "api/export", headers={"X-Bib2hal-Token": self.app.token})
+        with urllib.request.urlopen(req) as r:
+            text = r.read().decode("utf-8")
+            self.assertIn("attachment", r.headers["Content-Disposition"])
+        from bib2hal.bibtex import parse_bibtex
+        keys = [e["ID"] for e in parse_bibtex(text)]
+        self.assertIn("muller2023kg", keys)
+        self.assertNotIn("muller2020deep_dup", keys)               # duplicates left out
+        self.assertTrue((self.dir / "bib2hal-export.bib").exists())
+
+    def test_pdf_upload(self):
+        rows = self._import(name="scholar.bib")
+        i = rows["muller2023kg"]["id"]
+        self.assertEqual(self.call(f"/api/pdf/{i}?name=x.pdf", raw=b"not a pdf")[0], 400)
+        code, d = self.call(f"/api/pdf/{i}?name=paper.pdf", raw=b"%PDF-1.4 fake")
+        self.assertEqual(code, 200)
+        self.assertTrue(Path(d["row"]["pdf"]).is_file())
+        self.assertEqual(Path(d["row"]["pdf"]).parent.name, "pdfs")
+        _, d = self.call(f"/api/pdf/{i}?remove=1", {})
+        self.assertEqual(d["row"]["pdf"], "")
+
+    def test_struct_names(self):
+        os.environ["BIB2HAL_STRUCT_NAMES"] = "1234:LIG — Laboratoire d'Informatique de Grenoble"
+        with mock.patch("bib2hal.ui.structure_names", return_value={"999": "UGA — Université Grenoble Alpes"}) as m:
+            _, d = self.call("/api/structnames?ids=1234;999")
+            m.assert_called_once_with(["999"])                      # saved names are not asked again
+        self.assertEqual(d["names"], {"1234": "LIG — Laboratoire d'Informatique de Grenoble",
+                                      "999": "UGA — Université Grenoble Alpes"})
+
+    def test_failed_submission_is_explained(self):
+        rows = self._import(name="scholar.bib")
+        conf = rows["muller2023kg"]
+        self.assertEqual(self.call(f"/api/rows/{conf['id']}", {"my_structs": "1234", "me_position": "1"})[1]["row"]["problems"], [])
+        self.call("/api/auth/login", {"login": "me", "password": "secret"})
+        err = ("ERROR The supplied XML description does not validate the AOfr schema... Element "
+               "'{http://www.tei-c.org/ns/1.0}surname': This element is not expected. Expected is "
+               "( {http://www.tei-c.org/ns/1.0}forename ).")
+        self.app.deposit_fn = lambda *a, **k: {"ok": False, "status": 406, "hal_id": "", "message": err, "raw": ""}
+        self.call("/api/deposit", {"keys": ["muller2023kg"], "confirm": "yes"})
+        self.wait_job()
+        r = {x["key"]: x for x in self.call("/api/rows")[1]["rows"]}["muller2023kg"]
+        self.assertEqual(r["last_error"]["title"], "An author has no first name")
+        _, d = self.call("/api/ready")
+        self.assertEqual([f["key"] for f in d["failed"]], ["muller2023kg"])
+        self.assertEqual(d["ready"][0]["error"]["what"], "submission")
+        self.app.deposit_fn = lambda *a, **k: {"ok": True, "status": 202, "hal_id": "", "message": "", "raw": ""}
+        self.call("/api/deposit", {"keys": ["muller2023kg"], "test": True})   # a later successful check clears it
+        self.wait_job()
+        r = {x["key"]: x for x in self.call("/api/rows")[1]["rows"]}["muller2023kg"]
+        self.assertIsNone(r["last_error"])
 
 
 if __name__ == "__main__":

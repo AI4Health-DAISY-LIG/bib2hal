@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to use bib2hal</title>
+<meta name="description" content="Step-by-step guide: set up bib2hal, import your BibTeX file, review your references and submit them to HAL.">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-page="howto">
+<header id="site-header"></header>
+
+<main class="wrap">
+  <div class="page-head">
+    <div class="eyebrow">Guide</div>
+    <h1>How to use bib2hal</h1>
+    <p class="lead">About 30 minutes for a first import of a few dozen papers. You will need: your publication list as a
+      <code>.bib</code> file (<a href="bibtex.html">how to get it</a>), and your HAL login.</p>
+  </div>
+
+  <h2>Start the application</h2>
+  <ol class="steps">
+    <li><b>Download</b> the file for your system from the <a href="download.html">download page</a>.</li>
+    <li><b>Double-click it.</b> A small window opens and the interface appears in your web browser.
+      Keep the small window open while you work — closing it stops bib2hal.
+      <div class="note warn">The first time, your system warns that the application is not signed:
+        on <b>Windows</b> click <i>More info → Run anyway</i>; on <b>macOS</b> right-click the file → <i>Open</i> → <i>Open</i>.
+        <a href="download.html#first-launch">Details</a>.</div></li>
+    <li>Your settings and files are kept in <code>Documents/bib2hal</code> on your computer.</li>
+  </ol>
+
+  <h2>1 · Settings (once)</h2>
+  <p>The progress bar at the top shows what is left to fill in. Everything is saved on your computer only.</p>
+  <ol class="steps">
+    <li><b>Your name</b> as it appears in your references, written <code>Family, Given</code> (e.g. <code>Muller, Sandrine</code>),
+      and your <b>IdHAL</b> (shown in your HAL account, e.g. <code>sandrine-muller</code>). bib2hal uses them to recognise you among the
+      authors and to spot HAL records not yet linked to you.</li>
+    <li><b>Your labs</b>: search each lab you have belonged to (current and past) by name or acronym and click the right result
+      (prefer the ones marked <i>VALID</i>). Nothing is filled in automatically: in Review you will click, for each paper,
+      the lab(s) you belonged to at the time.</li>
+    <li><b>Your disciplines</b>: search HAL's list (in French or English) and add the ones you publish in.
+      For each paper, the closest one will be suggested.</li>
+    <li><b>Sign in to HAL</b> with your hal.science login. bib2hal checks it with HAL; tick <i>Remember me</i> to stay signed in
+      on this computer (stored in your system keychain, never in a file).</li>
+  </ol>
+  <div class="shot"><img src="assets/screens/settings.png" alt="Settings: the set-up progress bar and checklist, with name, IdHAL, lab and disciplines filled in."></div>
+  <p class="caption">The set-up checklist. "Save and continue to Import" becomes available once name, lab and disciplines are set.</p>
+
+  <h2>2 · Import</h2>
+  <ol class="steps">
+    <li>Choose your <code>.bib</code> file and click <b>Analyse</b>.</li>
+    <li>bib2hal completes each reference from Crossref and looks it up in HAL — about one second per reference,
+      to stay polite with HAL's servers. Nothing is sent to HAL at this step.</li>
+    <li>At the end you see how many references are to <b>deposit</b>, already in HAL (<b>skip</b>), in HAL but not linked to you
+      (<b>attach</b>), <b>duplicates</b>, or to <b>check</b>.</li>
+  </ol>
+  <div class="shot"><img src="assets/screens/import.png" alt="Import: progress bar, list of analysed references and the summary by action."></div>
+
+  <h2>3 · Review</h2>
+  <p>The list on the left shows all your references; click <i>To validate</i> to see only what needs your attention. Click a reference to see it on the right.</p>
+  <table>
+    <tr><th>Action</th><th>Meaning</th><th>What to do</th></tr>
+    <tr><td><b>deposit</b></td><td>Not in HAL.</td><td>Check type, disciplines and your affiliation, then <i>Validate &amp; next</i>.</td></tr>
+    <tr><td><b>check</b></td><td>Needs your decision.</td><td>Read the amber box: it says why (homonym, unknown type, no Crossref match…).
+      Fields to verify are outlined in amber. Then <i>It's fine → deposit</i> or <i>Not mine → skip</i>.</td></tr>
+    <tr><td><b>attach</b></td><td>In HAL, not linked to your IdHAL.</td><td>Open the HAL link and add it to your publications in HAL (<i>Mon espace → Mes publications</i>).</td></tr>
+    <tr><td><b>skip / duplicate</b></td><td>Nothing to do.</td><td>—</td></tr>
+  </table>
+  <div class="shot"><img src="assets/screens/review-check.png" alt="Review: a reference marked check, with the explanation box and the fields to verify outlined in amber."></div>
+  <p class="caption">Red outline = required before deposit. Amber outline = please verify.</p>
+  <h3>Tips</h3>
+  <ul>
+    <li><b>Several at once:</b> tick references on the left (shift-click for a range, or "select all shown"), then set an action,
+      a type or a discipline for all of them.</li>
+    <li><b>Affiliation at the time:</b> click the lab(s) offered under "Your affiliation(s) for this paper", or search another one there.</li>
+    <li><b>Full text:</b> to attach a PDF you are allowed to share (usually your accepted manuscript), click <i>Attach a PDF…</i>.</li>
+    <li><b>Only the fields HAL needs</b> are shown for each type: a thesis asks for the institution and supervisor(s), a conference paper for the conference city, country and date…</li>
+    <li><b>Come back later:</b> your review is saved as you go. To add papers, update your <code>.bib</code> and choose
+      <i>Analyse this file</i> in Import: what you already reviewed is kept, only new references are analysed.
+      <i>Export as .bib</i> gives you back your list with the DOIs found and your corrections.</li>
+    <li><b>Preview TEI</b> shows exactly what will be sent to HAL.</li>
+  </ul>
+
+  <h2>4 · Submit</h2>
+  <p>If HAL refuses some records, only those need another look: they appear under the <b>HAL errors</b> filter in Review,
+    with an explanation of what to fix (for example, a consortium listed as an author, or a thesis without its supervisor).</p>
+  <ol class="steps">
+    <li>Click <b>Check with HAL</b>: HAL validates each selected record completely and <b>creates nothing</b>.
+      Each line then shows "check passed" or HAL's error message.</li>
+    <li>Click <b>Submit to HAL…</b> and confirm. Each record is sent under your account; a reference already submitted is never sent twice.</li>
+    <li>HAL moderators review each record before it becomes public. Follow them in your HAL account (<i>Mon espace → Mes dépôts</i>).</li>
+  </ol>
+  <div class="shot"><img src="assets/screens/submit.png" alt="Submit: signed-in account, list of ready references with their check status, and the Check / Submit buttons."></div>
+
+  <h2>Keep it up to date</h2>
+  <p>Deposit new papers <b>in HAL first</b>, at acceptance (HAL then sends them to ORCID, and Google Scholar indexes HAL).
+    Once or twice a year, export a fresh list and import it again in bib2hal to catch what slipped through.</p>
+
+  <h2>Questions</h2>
+  <details><summary>Is my previous review lost if I import again?</summary><p>No. The previous review is kept as a dated backup in your bib2hal folder.</p></details>
+  <details><summary>bib2hal says HAL answered with a protection page.</summary><p>HAL's servers are protected against robots. bib2hal stops
+    immediately rather than insisting. Wait a few hours; if it persists, contact HAL support.</p></details>
+  <details><summary>Can I use it without the interface?</summary><p>Yes, everything is available from the command line: see the
+    <a href="https://github.com/AI4Health-DAISY-LIG/bib2hal#use-it--command-line">README</a>.</p></details>
+</main>
+
+<footer id="site-footer"></footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

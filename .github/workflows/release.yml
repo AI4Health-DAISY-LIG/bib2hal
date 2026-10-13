@@ -1,0 +1,107 @@
+# Builds the downloadable applications and publishes them as a GitHub Release.
+#
+# Trigger: push a version tag, e.g.
+#     git tag v0.2.0 && git push origin v0.2.0
+# The tag must match __version__ in bib2hal/__init__.py.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:          # manual run from the Actions tab: builds, but publishes no release
+
+permissions:
+  contents: write             # needed to create the release and attach files
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests -v
+      - name: Tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          v=$(python -c "import bib2hal; print(bib2hal.__version__)")
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "Tag ${GITHUB_REF_NAME} != package version v$v"; exit 1; }
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: bib2hal-windows-x64.exe
+          - os: macos-latest          # Apple Silicon (M1 and later)
+            asset: bib2hal-macos-arm64
+          - os: ubuntu-22.04          # older glibc = runs on more Linux distributions
+            asset: bib2hal-linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: python -m pip install --upgrade pip pyinstaller keyring pillow
+      - name: Build
+        run: pyinstaller --noconfirm --clean packaging/bib2hal.spec
+      - name: Smoke test
+        shell: bash
+        run: |
+          exe=dist/bib2hal; [ -f dist/bib2hal.exe ] && exe=dist/bib2hal.exe
+          "$exe" --version
+          "$exe" config
+      - name: Rename
+        shell: bash
+        run: |
+          mkdir out
+          if [ -f dist/bib2hal.exe ]; then cp dist/bib2hal.exe "out/${{ matrix.asset }}"; else cp dist/bib2hal "out/${{ matrix.asset }}"; fi
+      - name: Zip (macOS / Linux keep the executable permission inside the zip)
+        if: runner.os != 'Windows'
+        run: cd out && chmod +x "${{ matrix.asset }}" && zip "${{ matrix.asset }}.zip" "${{ matrix.asset }}" && rm "${{ matrix.asset }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: out/*
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Checksums
+        run: cd assets && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: assets/*
+          generate_release_notes: true
+          body: |
+            ## Download
+            | System | File |
+            |---|---|
+            | Windows 10/11 | `bib2hal-windows-x64.exe` |
+            | macOS (Apple Silicon) | `bib2hal-macos-arm64.zip` |
+            | Linux | `bib2hal-linux-x64.zip` |
+
+            Double-click to start: the interface opens in your browser and your files are kept in
+            `Documents/bib2hal`. See the README for the first-launch security prompts (unsigned app).
+
+  docs:
+    # Re-publish the documentation website once the release exists (its download page lists the new files).
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml

@@ -7,7 +7,7 @@ import re
 import xml.etree.ElementTree as ET
 import zipfile
 
-from .review import authors_from_str
+from .review import authors_from_str, is_group
 
 TEI_NS = "http://www.tei-c.org/ns/1.0"
 HAL_NS = "http://hal.archives-ouvertes.fr/"
@@ -74,6 +74,8 @@ def build_tei(row: dict, idhal: str = "", pdf_name: str = "") -> bytes:
 
     def add_authors(parent):
         for i, a in enumerate(authors):
+            if not a.get("given") and is_group(a["family"]):
+                continue                     # collective author: HAL's author list holds people only
             _author(parent, a, structs if i == me else [], idhal if i == me else "",
                     orcids[i] if i < len(orcids) else "")
 
@@ -118,6 +120,9 @@ def build_tei(row: dict, idhal: str = "", pdf_name: str = "") -> bytes:
         _sub(mt, "country", key=row["conf_country"].upper())
     if htype in ("THESE", "HDR", "MEM", "REPORT"):
         _sub(mo, "authority", row["institution"], type="institution")
+        if htype in ("THESE", "HDR"):
+            for sup in [x.strip() for x in (row.get("supervisor") or "").split(";") if x.strip()]:
+                _sub(mo, "authority", sup, type="supervisor")
     imp = _sub(mo, "imprint")
     if row.get("publisher"):
         _sub(imp, "publisher", row["publisher"])
